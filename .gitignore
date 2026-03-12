@@ -5,21 +5,35 @@ __pycache__/
 .eggs/
 *.egg-info/
 venv/
-.venv/
+ENV/
+env/
+.venv
 
 # IDE
 .idea/
 .vscode/
 *.swp
+*.swo
+*~
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+
+# Logs
+*.log
+
+# Configuration
+*.bak
+*.backup
+config.yaml.bak
 
 # OS
 .DS_Store
 
-# Project
-config.yaml.bak
-*.bak
+# Build
+build/
+dist/
+*.egg-info/

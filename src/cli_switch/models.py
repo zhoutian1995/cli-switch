@@ -68,8 +68,8 @@ class ModelRegistry:
             Model("opus4.6", "Opus 4.6", ToolType.CLAUDE, "claude-opus-4-6", "写后端代码专用", "https://www.fucheers.top", "FUCHEERS_API_KEY", tags=["fucheers"]),
 
             # === Gemini CLI 模型 ===
-            Model("gemini-3-pro", "Gemini 3.1 Pro", ToolType.GEMINI, "gemini-3.1-pro", "写前端代码 - 推理能力领先", api_key_env="GEMINI_API_KEY", tags=["google", "recommended"]),
-            Model("nanobanana", "Nano Banana 2", ToolType.GEMINI, "gemini-2.5-flash", "画图 - 全球排名第一", api_key_env="GEMINI_API_KEY", tags=["google", "image"]),
+            Model("gemini-31-pro", "Gemini 3.1 Pro", ToolType.GEMINI, "gemini-3.1-pro", "写前端代码 - 推理能力领先", api_key_env="GEMINI_API_KEY", tags=["google", "recommended"]),
+            Model("nanobanana", "Gemini 3 Pro Image", ToolType.GEMINI, "gemini-3-pro-image", "画图专用", api_key_env="GEMINI_API_KEY", tags=["google", "image"]),
 
             # === Codex CLI 模型 ===
             Model("gpt-5.2-codex", "GPT-5.2 Codex", ToolType.CODEX, "gpt-5.2-codex", "深度搜索", tags=["openai"]),

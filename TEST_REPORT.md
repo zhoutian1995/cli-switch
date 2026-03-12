@@ -49,8 +49,8 @@
 
 | 别名 | 模型名称 | 模型 Key | 描述 |
 |:---|:---|:---|:---|
-| gemini-3-pro | Gemini 3.1 Pro | gemini-3.1-pro | 写前端代码 |
-| nanobanana | Nano Banana 2 | gemini-2.5-flash | 画图专用 |
+| gemini-31-pro | Gemini 3.1 Pro | gemini-3.1-pro | 写前端代码 |
+| nanobanana | Gemini 3 Pro Image | gemini-3-pro-image | 画图专用 |
 
 ### Codex CLI 模型 (2 个)
 
