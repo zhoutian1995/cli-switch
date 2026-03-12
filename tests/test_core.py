@@ -23,19 +23,19 @@ class TestModelRegistry(unittest.TestCase):
         self.assertEqual(self.registry.count(), 15)
 
     def test_claude_models(self):
-        """测试 Claude 模型数量"""
+        """测试 Claude 模型数量 (8 个百炼 + 2 个智谱 + 1 个 Fucheers = 11)"""
         count = self.registry.count(ToolType.CLAUDE)
-        self.assertGreater(count, 0)
+        self.assertEqual(count, 11)
 
     def test_gemini_models(self):
-        """测试 Gemini 模型数量"""
+        """测试 Gemini 模型数量 (2 个智谱 + 2 个 Gemini 原生 = 4)"""
         count = self.registry.count(ToolType.GEMINI)
-        self.assertEqual(count, 2)
+        self.assertEqual(count, 4)
 
     def test_codex_models(self):
-        """测试 Codex 模型数量"""
+        """测试 Codex 模型数量 (8 个百炼 + 2 个 Codex 原生 = 10)"""
         count = self.registry.count(ToolType.CODEX)
-        self.assertEqual(count, 2)
+        self.assertEqual(count, 10)
 
     def test_get_model(self):
         """测试获取模型"""
