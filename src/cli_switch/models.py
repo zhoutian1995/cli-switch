@@ -72,8 +72,8 @@ class ModelRegistry:
             Model("nanobanana", "Nano Banana 2", ToolType.GEMINI, "gemini-2.5-flash", "画图 - 全球排名第一", api_key_env="GEMINI_API_KEY", tags=["google", "image"]),
 
             # === Codex CLI 模型 ===
-            Model("gpt-5.2-codex", "GPT-5.2 Codex", ToolType.CODEX, "gpt-5.2-codex", "深度搜索", api_key_env="OPENAI_API_KEY", tags=["openai"]),
-            Model("gpt-5.4-codex", "GPT-5.4 Codex", ToolType.CODEX, "gpt-5-4-codex", "代码 review", api_key_env="OPENAI_API_KEY", tags=["openai"]),
+            Model("gpt-5.2-codex", "GPT-5.2 Codex", ToolType.CODEX, "gpt-5.2-codex", "深度搜索", tags=["openai"]),
+            Model("gpt-5.4-codex", "GPT-5.4 Codex", ToolType.CODEX, "gpt-5-4-codex", "代码 review", tags=["openai"]),
         ]
         for m in models:
             self.register(m)
