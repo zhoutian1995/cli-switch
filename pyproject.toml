@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cli-switch"
+version = "0.1.0"
+description = "AI CLI 工具切换器 - 支持 Claude Code, Gemini CLI, Codex CLI"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "OpenClaw Team", email = "willezhou2015@gmail.com"}]
+keywords = ["cli", "ai", "claude", "gemini", "codex", "switcher"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+]
+requires-python = ">=3.8"
+dependencies = ["pyyaml>=6.0"]
+
+[project.scripts]
+cli-switch = "cli_switch.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
