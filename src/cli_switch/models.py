@@ -24,7 +24,6 @@ class Model:
     description: str = ""
     base_url: Optional[str] = None
     api_key_env: Optional[str] = None
-    config_field: Optional[str] = None
     tags: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -37,24 +36,8 @@ class Model:
             "description": self.description,
             "base_url": self.base_url,
             "api_key_env": self.api_key_env,
-            "config_field": self.config_field,
             "tags": self.tags,
         }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Model":
-        """从字典创建"""
-        return cls(
-            key=data["key"],
-            name=data["name"],
-            tool=ToolType(data["tool"]),
-            model_id=data["model_id"],
-            description=data.get("description", ""),
-            base_url=data.get("base_url"),
-            api_key_env=data.get("api_key_env"),
-            config_field=data.get("config_field"),
-            tags=data.get("tags", []),
-        )
 
 
 class ModelRegistry:
@@ -65,32 +48,30 @@ class ModelRegistry:
         self._load_default_models()
 
     def _load_default_models(self):
-        """加载默认模型配置"""
+        """加载默认模型配置 - 根据用户提供的完整模型列表"""
         models = [
-            # fucheers Claude 原生
-            Model("opus", "Claude Opus 4.6", ToolType.CLAUDE, "claude-opus-4-6", "最强写作模型", "https://www.fucheers.top", "FUCHEERS_API_KEY", tags=["fucheers"]),
-            Model("opus45", "Claude Opus 4.5", ToolType.CLAUDE, "claude-opus-4.5-20251101", "强", "https://www.fucheers.top", "FUCHEERS_API_KEY", tags=["fucheers"]),
-            Model("sonnet", "Claude Sonnet 4.5", ToolType.CLAUDE, "claude-sonnet-4.5-20250929", "中等", "https://www.fucheers.top", "FUCHEERS_API_KEY", tags=["fucheers"]),
-            Model("haiku", "Claude Haiku 4.5", ToolType.CLAUDE, "claude-haiku-4.5-20251001", "轻量", "https://www.fucheers.top", "FUCHEERS_API_KEY", tags=["fucheers"]),
-            # 智谱 Zhipu
-            Model("zhipu", "智谱 GLM", ToolType.CLAUDE, "glm-4.5-air", "多模型选择", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
-            Model("glm45", "GLM-4.5", ToolType.CLAUDE, "glm-4.5", "基础模型", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
-            Model("glm46", "GLM-4.6", ToolType.CLAUDE, "glm-4.6", "进阶模型", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
-            Model("glm47", "GLM-4.7", ToolType.CLAUDE, "glm-4.7", "平衡性能", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
-            Model("glm5", "GLM-5", ToolType.CLAUDE, "glm-5", "最强性能", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
-            Model("glm-flash", "GLM-4-Flash", ToolType.CLAUDE, "glm-4-flash", "免费快速", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu", "free"]),
-            # 阿里云百炼
-            Model("qwen", "Qwen3.5+", ToolType.CLAUDE, "qwen3.5-plus", "⭐推荐", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "recommended"]),
-            Model("kimi", "Kimi K2.5", ToolType.CLAUDE, "kimi-k2.5", "⭐推荐", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "recommended"]),
-            Model("glm", "GLM-5 (百炼)", ToolType.CLAUDE, "glm-5", "⭐推荐 代码专用", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "code"]),
-            Model("minimax", "MiniMax M2.5", ToolType.CLAUDE, "MiniMax-M2.5", "⭐推荐", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian"]),
-            Model("qwen-max", "Qwen3 Max", ToolType.CLAUDE, "qwen3-max-2026-01-23", "最强推理", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian"]),
-            Model("qwen-coder", "Qwen Coder+", ToolType.CLAUDE, "qwen3-coder-plus", "代码专用", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "code"]),
-            Model("qwen-next", "Qwen Coder Next", ToolType.CLAUDE, "qwen3-coder-next", "代码模型", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "code"]),
-            # Gemini CLI
-            Model("gemini-2.5-pro", "Gemini 2.5 Pro", ToolType.GEMINI, "gemini-2.5-pro", "写前端代码", api_key_env="GEMINI_API_KEY", tags=["google", "recommended"]),
-            Model("nanobanana", "Nano Banana 2", ToolType.GEMINI, "gemini-2.5-flash", "画图专用", api_key_env="GEMINI_API_KEY", tags=["google", "image"]),
-            # Codex CLI
+            # === 百炼模型 (Claude Code / Codex CLI) ===
+            Model("qwen", "Qwen3.5+", ToolType.CLAUDE, "qwen3.5-plus", "通义千问 3.5 增强版", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "recommended"]),
+            Model("qwen-max", "Qwen3 Max", ToolType.CLAUDE, "qwen3-max-2026-01-23", "通义千问 3 Max 版", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian"]),
+            Model("qwen-next", "Qwen Coder Next", ToolType.CLAUDE, "qwen3-coder-next", "通义千问 3 Coder 下一代", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "code"]),
+            Model("qwen-coder", "Qwen Coder+", ToolType.CLAUDE, "qwen3-coder-plus", "通义千问 3 Coder 增强版", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "code"]),
+            Model("minimax", "MiniMax M2.5", ToolType.CLAUDE, "MiniMax-M2.5", "一般", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian"]),
+            Model("glm", "GLM-5 (百炼)", ToolType.CLAUDE, "glm-5", "代码专用", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "code"]),
+            Model("glm47", "GLM-4.7 (百炼)", ToolType.CLAUDE, "glm-4.7", "代码模型", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "code"]),
+            Model("kimi", "Kimi K2.5", ToolType.CLAUDE, "kimi-k2.5", "一般", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian"]),
+
+            # === 智谱模型 (Claude Code / Gemini CLI) ===
+            Model("glm47-zhipu", "GLM-4.7", ToolType.CLAUDE, "glm-4.7", "平衡", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
+            Model("glm5-zhipu", "智谱 GLM-5", ToolType.CLAUDE, "glm-5", "最强", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
+
+            # === Fucheers 模型 (仅 Claude Code) ===
+            Model("opus4.6", "Opus 4.6", ToolType.CLAUDE, "claude-opus-4-6", "写后端代码专用", "https://www.fucheers.top", "FUCHEERS_API_KEY", tags=["fucheers"]),
+
+            # === Gemini CLI 模型 ===
+            Model("gemini-3-pro", "Gemini 3.1 Pro", ToolType.GEMINI, "gemini-3.1-pro", "写前端代码 - 推理能力领先", api_key_env="GEMINI_API_KEY", tags=["google", "recommended"]),
+            Model("nanobanana", "Nano Banana 2", ToolType.GEMINI, "gemini-2.5-flash", "画图 - 全球排名第一", api_key_env="GEMINI_API_KEY", tags=["google", "image"]),
+
+            # === Codex CLI 模型 ===
             Model("gpt-5.2-codex", "GPT-5.2 Codex", ToolType.CODEX, "gpt-5.2-codex", "深度搜索", api_key_env="OPENAI_API_KEY", tags=["openai"]),
             Model("gpt-5.4-codex", "GPT-5.4 Codex", ToolType.CODEX, "gpt-5-4-codex", "代码 review", api_key_env="OPENAI_API_KEY", tags=["openai"]),
         ]

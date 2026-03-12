@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 """
 CLI Switch 完整测试报告 - 测试每个模型的配置正确性
+
+模型列表根据用户提供的配置：
+- 百炼模型：8 个 (qwen, qwen-max, qwen-next, qwen-coder, minimax, glm, glm47, kimi)
+- 智谱模型：2 个 (glm47-zhipu, glm5-zhipu)
+- Fucheers 模型：1 个 (opus4.6)
+- Gemini 模型：2 个 (gemini-3-pro, nanobanana)
+- Codex 模型：2 个 (gpt-5.2-codex, gpt-5.4-codex)
+
+总计：15 个模型
 """
 
 import os
@@ -10,7 +19,6 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
-# 测试结果
 test_results = []
 
 def log(message, save=True):
@@ -18,32 +26,17 @@ def log(message, save=True):
     if save:
         test_results.append(message)
 
-def run_command(cmd, timeout=10):
-    """运行命令并返回结果"""
-    try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=timeout
-        )
-        return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
-    except subprocess.TimeoutExpired:
-        return False, "", "超时"
-    except Exception as e:
-        return False, "", str(e)
-
 def get_current_config():
     """获取当前配置"""
     config_path = Path.home() / ".claude" / "settings.json"
     if not config_path.exists():
         return None
-
     with open(config_path, 'r', encoding='utf-8') as f:
         config = json.load(f)
-
     env = config.get("env", {})
     return {
         "model": env.get("ANTHROPIC_MODEL"),
         "base_url": env.get("ANTHROPIC_BASE_URL"),
-        "auth_token": env.get("ANTHROPIC_AUTH_TOKEN", "")[:10] + "..." if env.get("ANTHROPIC_AUTH_TOKEN") else None
     }
 
 def test_claude_model(model_key, expected_model_id, expected_base_url):
@@ -52,20 +45,20 @@ def test_claude_model(model_key, expected_model_id, expected_base_url):
     log(f"  期望 model: {expected_model_id}")
     log(f"  期望 base_url: {expected_base_url}")
 
-    # 切换模型
-    success, stdout, stderr = run_command(f"cli-switch {model_key}")
+    success, stdout, stderr = subprocess.run(
+        f"cli-switch {model_key}", shell=True, capture_output=True, text=True, timeout=10
+    ).returncode == 0, "", ""
 
-    if not success:
-        log(f"  ❌ 切换失败：{stderr}", save=False)
-        return False, stderr
+    result = subprocess.run(f"cli-switch {model_key}", shell=True, capture_output=True, text=True, timeout=10)
+    if result.returncode != 0:
+        log(f"  ❌ 切换失败：{result.stderr[:100]}")
+        return False, result.stderr
 
-    # 获取配置
     config = get_current_config()
     if not config:
         log(f"  ❌ 无法读取配置文件")
         return False, "配置文件不存在"
 
-    # 验证
     model_ok = config["model"] == expected_model_id
     url_ok = config["base_url"] == expected_base_url
 
@@ -77,21 +70,9 @@ def test_claude_model(model_key, expected_model_id, expected_base_url):
         return True, "通过"
     else:
         errors = []
-        if not model_ok:
-            errors.append(f"model 不匹配")
-        if not url_ok:
-            errors.append(f"base_url 不匹配")
+        if not model_ok: errors.append(f"model 不匹配")
+        if not url_ok: errors.append(f"base_url 不匹配")
         return False, "; ".join(errors)
-
-def test_api_key(model_key, expected_provider):
-    """测试 API Key 配置"""
-    config = get_current_config()
-    if config and config.get("auth_token"):
-        log(f"  API Key: 已配置 ({config['auth_token']})")
-        return True
-    else:
-        log(f"  API Key: 未配置或从环境变量读取")
-        return None  # 可能从环境变量读取，不算失败
 
 def main():
     """主测试函数"""
@@ -109,29 +90,24 @@ def main():
     else:
         log("❌ Claude 配置文件不存在")
 
-    # 测试用例：(model_key, expected_model_id, expected_base_url, provider)
+    # 测试用例：(model_key, expected_model_id, expected_base_url, category)
     test_cases = [
-        # fucheers Claude 原生
-        ("opus", "claude-opus-4-6", "https://www.fucheers.top", "fucheers"),
-        ("opus45", "claude-opus-4.5-20251101", "https://www.fucheers.top", "fucheers"),
-        ("sonnet", "claude-sonnet-4.5-20250929", "https://www.fucheers.top", "fucheers"),
-        ("haiku", "claude-haiku-4.5-20251001", "https://www.fucheers.top", "fucheers"),
+        # === 百炼模型 (Claude Code / Codex CLI) ===
+        ("qwen", "qwen3.5-plus", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "百炼"),
+        ("qwen-max", "qwen3-max-2026-01-23", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "百炼"),
+        ("qwen-next", "qwen3-coder-next", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "百炼"),
+        ("qwen-coder", "qwen3-coder-plus", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "百炼"),
+        ("minimax", "MiniMax-M2.5", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "百炼"),
+        ("glm", "glm-5", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "百炼"),
+        ("glm47", "glm-4.7", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "百炼"),
+        ("kimi", "kimi-k2.5", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "百炼"),
 
-        # 智谱 Zhipu
-        ("glm45", "glm-4.5", "https://open.bigmodel.cn/api/anthropic", "zhipu"),
-        ("glm46", "glm-4.6", "https://open.bigmodel.cn/api/anthropic", "zhipu"),
-        ("glm47", "glm-4.7", "https://open.bigmodel.cn/api/anthropic", "zhipu"),
-        ("glm5", "glm-5", "https://open.bigmodel.cn/api/anthropic", "zhipu"),
-        ("glm-flash", "glm-4-flash", "https://open.bigmodel.cn/api/anthropic", "zhipu"),
+        # === 智谱模型 (Claude Code / Gemini CLI) ===
+        ("glm47-zhipu", "glm-4.7", "https://open.bigmodel.cn/api/anthropic", "智谱"),
+        ("glm5-zhipu", "glm-5", "https://open.bigmodel.cn/api/anthropic", "智谱"),
 
-        # 阿里云百炼
-        ("qwen", "qwen3.5-plus", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "bailian"),
-        ("kimi", "kimi-k2.5", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "bailian"),
-        ("glm", "glm-5", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "bailian"),
-        ("minimax", "MiniMax-M2.5", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "bailian"),
-        ("qwen-max", "qwen3-max-2026-01-23", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "bailian"),
-        ("qwen-coder", "qwen3-coder-plus", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "bailian"),
-        ("qwen-next", "qwen3-coder-next", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "bailian"),
+        # === Fucheers 模型 (仅 Claude Code) ===
+        ("opus4.6", "claude-opus-4-6", "https://www.fucheers.top", "Fucheers"),
     ]
 
     log("\n" + "=" * 70)
@@ -140,14 +116,30 @@ def main():
 
     passed = 0
     failed = 0
+    results_by_category = {}
 
-    for model_key, expected_model, expected_url, provider in test_cases:
+    for model_key, expected_model, expected_url, category in test_cases:
         success, error = test_claude_model(model_key, expected_model, expected_url)
         if success:
             passed += 1
         else:
             failed += 1
             log(f"  错误：{error}")
+
+        if category not in results_by_category:
+            results_by_category[category] = {"passed": 0, "failed": 0}
+        if success:
+            results_by_category[category]["passed"] += 1
+        else:
+            results_by_category[category]["failed"] += 1
+
+    # 按类别总结
+    log("\n" + "=" * 70)
+    log("【按类别统计】")
+    log("=" * 70)
+    for category, stats in results_by_category.items():
+        total = stats["passed"] + stats["failed"]
+        log(f"{category}: {stats['passed']}/{total} 通过")
 
     # 总结
     log("\n" + "=" * 70)
@@ -156,7 +148,8 @@ def main():
     log(f"总测试数：{len(test_cases)}")
     log(f"通过：{passed}")
     log(f"失败：{failed}")
-    log(f"通过率：{passed / len(test_cases) * 100:.1f}%")
+    if len(test_cases) > 0:
+        log(f"通过率：{passed / len(test_cases) * 100:.1f}%")
 
     # 保存报告
     report_dir = Path.home() / ".local" / "share" / "cli-switch"
@@ -166,13 +159,11 @@ def main():
     with open(report_path, 'w', encoding='utf-8') as f:
         f.write("# CLI Switch 完整测试报告\n\n")
         f.write(f"**测试时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-
         f.write("## 测试结果\n\n")
-        f.write("| 模型 | 期望 model_id | 实际 model_id | 期望 base_url | 实际 base_url | 结果 |\n")
-        f.write("|------|---------------|---------------|---------------|---------------|------|\n")
+        f.write("| 类别 | 模型 | 期望 model_id | 实际 model_id | 期望 base_url | 实际 base_url | 结果 |\n")
+        f.write("|------|------|---------------|---------------|---------------|---------------|------|\n")
 
-        for model_key, expected_model, expected_url, provider in test_cases:
-            # 获取实际值
+        for model_key, expected_model, expected_url, category in test_cases:
             subprocess.run(f"cli-switch {model_key} > /dev/null 2>&1", shell=True)
             config = get_current_config()
             if config:
@@ -185,20 +176,18 @@ def main():
                 actual_model = "N/A"
                 actual_url = "N/A"
                 result = "❌"
-
-            f.write(f"| {model_key} | {expected_model} | {actual_model} {model_ok} | {expected_url} | {actual_url} {url_ok} | {result} |\n")
+            f.write(f"| {category} | {model_key} | {expected_model} | {actual_model} {model_ok} | {expected_url} | {actual_url} {url_ok} | {result} |\n")
 
         f.write(f"\n## 统计\n\n")
         f.write(f"- 总测试数：{len(test_cases)}\n")
         f.write(f"- 通过：{passed}\n")
         f.write(f"- 失败：{failed}\n")
-        f.write(f"- 通过率：{passed / len(test_cases) * 100:.1f}%\n")
 
     log(f"\n完整报告已保存到：{report_path}")
 
     # 恢复初始模型
-    log("\n恢复初始模型...")
-    run_command("cli-switch qwen")
+    log("\n恢复初始模型 (qwen)...")
+    subprocess.run("cli-switch qwen > /dev/null 2>&1", shell=True)
 
     return failed == 0
 
