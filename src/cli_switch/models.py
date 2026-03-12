@@ -68,13 +68,14 @@ class ModelRegistry:
         """加载默认模型配置"""
         models = [
             # fucheers Claude 原生
-            Model("opus", "Claude Opus 4.6", ToolType.CLAUDE, "claude-opus-4-6", "最强写作模型", tags=["fucheers"]),
-            Model("opus45", "Claude Opus 4.5", ToolType.CLAUDE, "claude-opus-4.5-20251101", "强", tags=["fucheers"]),
-            Model("sonnet", "Claude Sonnet 4.5", ToolType.CLAUDE, "claude-sonnet-4.5-20250929", "中等", tags=["fucheers"]),
-            Model("haiku", "Claude Haiku 4.5", ToolType.CLAUDE, "claude-haiku-4.5-20251001", "轻量", tags=["fucheers"]),
+            Model("opus", "Claude Opus 4.6", ToolType.CLAUDE, "claude-opus-4-6", "最强写作模型", "https://www.fucheers.top", "FUCHEERS_API_KEY", tags=["fucheers"]),
+            Model("opus45", "Claude Opus 4.5", ToolType.CLAUDE, "claude-opus-4.5-20251101", "强", "https://www.fucheers.top", "FUCHEERS_API_KEY", tags=["fucheers"]),
+            Model("sonnet", "Claude Sonnet 4.5", ToolType.CLAUDE, "claude-sonnet-4.5-20250929", "中等", "https://www.fucheers.top", "FUCHEERS_API_KEY", tags=["fucheers"]),
+            Model("haiku", "Claude Haiku 4.5", ToolType.CLAUDE, "claude-haiku-4.5-20251001", "轻量", "https://www.fucheers.top", "FUCHEERS_API_KEY", tags=["fucheers"]),
             # 智谱 Zhipu
             Model("zhipu", "智谱 GLM", ToolType.CLAUDE, "glm-4.5-air", "多模型选择", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
             Model("glm45", "GLM-4.5", ToolType.CLAUDE, "glm-4.5", "基础模型", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
+            Model("glm46", "GLM-4.6", ToolType.CLAUDE, "glm-4.6", "进阶模型", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
             Model("glm47", "GLM-4.7", ToolType.CLAUDE, "glm-4.7", "平衡性能", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
             Model("glm5", "GLM-5", ToolType.CLAUDE, "glm-5", "最强性能", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu"]),
             Model("glm-flash", "GLM-4-Flash", ToolType.CLAUDE, "glm-4-flash", "免费快速", "https://open.bigmodel.cn/api/anthropic", "ZHIPU_API_KEY", tags=["zhipu", "free"]),
@@ -83,6 +84,9 @@ class ModelRegistry:
             Model("kimi", "Kimi K2.5", ToolType.CLAUDE, "kimi-k2.5", "⭐推荐", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "recommended"]),
             Model("glm", "GLM-5 (百炼)", ToolType.CLAUDE, "glm-5", "⭐推荐 代码专用", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "code"]),
             Model("minimax", "MiniMax M2.5", ToolType.CLAUDE, "MiniMax-M2.5", "⭐推荐", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian"]),
+            Model("qwen-max", "Qwen3 Max", ToolType.CLAUDE, "qwen3-max-2026-01-23", "最强推理", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian"]),
+            Model("qwen-coder", "Qwen Coder+", ToolType.CLAUDE, "qwen3-coder-plus", "代码专用", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "code"]),
+            Model("qwen-next", "Qwen Coder Next", ToolType.CLAUDE, "qwen3-coder-next", "代码模型", "https://coding.dashscope.aliyuncs.com/apps/anthropic", "BAILIAN_API_KEY", tags=["bailian", "code"]),
             # Gemini CLI
             Model("gemini-2.5-pro", "Gemini 2.5 Pro", ToolType.GEMINI, "gemini-2.5-pro", "写前端代码", api_key_env="GEMINI_API_KEY", tags=["google", "recommended"]),
             Model("nanobanana", "Nano Banana 2", ToolType.GEMINI, "gemini-2.5-flash", "画图专用", api_key_env="GEMINI_API_KEY", tags=["google", "image"]),

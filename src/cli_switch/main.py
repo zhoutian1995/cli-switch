@@ -14,38 +14,73 @@ from .switcher import Switcher, SwitchError
 
 
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="cli-switch", description="AI CLI 工具切换器")
-    parser.add_argument("--version", "-v", action="version", version=f"%(prog)s {__version__}")
+    parser = argparse.ArgumentParser(
+        prog="cli-switch",
+        description="AI CLI 工具切换器",
+        add_help=False  # 禁用默认帮助，以便自定义处理
+    )
+    parser.add_argument("--version", "-v", action="store_true", help="显示版本号")
     parser.add_argument("--config", "-c", type=str, help="自定义配置文件路径")
     parser.add_argument("--json", "-j", action="store_true", help="以 JSON 格式输出")
+    parser.add_argument("--help", "-h", action="store_true", help="显示帮助")
 
-    subparsers = parser.add_subparsers(dest="command", help="可用命令")
-
-    # switch 命令
-    switch_parser = subparsers.add_parser("switch", help="切换模型")
-    switch_parser.add_argument("model", nargs="?", help="模型名称")
-    switch_parser.add_argument("--list", "-l", action="store_true", help="列出所有模型")
-    switch_parser.add_argument("--current", action="store_true", help="显示当前模型")
-
-    subparsers.add_parser("list", help="列出所有模型")
-    subparsers.add_parser("status", help="显示当前状态")
-
-    test_parser = subparsers.add_parser("test", help="测试模型")
-    test_parser.add_argument("model", nargs="?", help="模型名称")
-    test_parser.add_argument("--timeout", "-t", type=int, default=30, help="超时时间（秒）")
-
-    tool_parser = subparsers.add_parser("tool", help="选择目标工具")
-    tool_parser.add_argument("tool", choices=["claude", "gemini", "codex"], help="工具名称")
-
-    config_parser = subparsers.add_parser("config", help="配置管理")
-    config_parser.add_argument("action", choices=["show", "edit"], help="操作")
+    # 位置参数 - 可以是模型名称或命令
+    parser.add_argument("command", nargs="?", default=None, help="命令或模型名称")
+    parser.add_argument("model", nargs="?", default=None, help="模型名称（当 command 是 switch 时）")
+    parser.add_argument("--list", "-l", action="store_true", help="列出所有模型")
+    parser.add_argument("--current", action="store_true", help="显示当前模型")
+    parser.add_argument("--timeout", "-t", type=int, default=30, help="超时时间（秒）")
+    parser.add_argument("rest", nargs="*", help="剩余参数")
 
     return parser
+
+
+def print_help():
+    """打印帮助信息"""
+    print("""cli-switch - AI CLI 工具切换器
+
+用法:
+  cli-switch <model>              切换到指定模型
+  cli-switch list                 列出所有模型
+  cli-switch status               显示当前状态
+  cli-switch test [model]         测试模型
+  cli-switch tool <tool>          选择目标工具
+  cli-switch config show|edit     配置管理
+  cli-switch switch <model>       切换模型
+  cli-switch --list               列出所有模型
+  cli-switch --current            显示当前模型
+
+选项:
+  --version, -v    显示版本号
+  --help, -h       显示帮助
+  --json, -j       JSON 格式输出
+  --config, -c     自定义配置文件路径
+  --list, -l       列出所有模型
+  --current        显示当前模型
+  --timeout, -t    测试超时时间（秒）
+
+示例:
+  cli-switch qwen                 切换到 Qwen3.5+
+  cli-switch list                 列出所有模型
+  cli-switch status               显示当前状态
+  cli-switch test                 测试所有模型
+  cli-switch --json list          JSON 格式列出模型
+""")
 
 
 def main(argv: Optional[list] = None):
     parser = create_parser()
     args = parser.parse_args(argv)
+
+    # 处理 --version
+    if args.version:
+        print(f"cli-switch {__version__}")
+        return
+
+    # 处理 --help
+    if args.help or args.command is None:
+        print_help()
+        return
 
     try:
         config = Config()
@@ -59,33 +94,44 @@ def main(argv: Optional[list] = None):
     registry = ModelRegistry()
     switcher = Switcher(config)
 
-    if args.command is None:
-        if len(sys.argv) >= 2 and not sys.argv[1].startswith("-"):
-            handle_switch(sys.argv[1], registry, switcher, args.json)
+    cmd = args.command
+    json_output = args.json
+
+    # 处理命令
+    if cmd == "list" or args.list:
+        handle_list(registry, json_output)
+    elif cmd == "status" or args.current:
+        handle_status(switcher, registry, json_output)
+    elif cmd == "test":
+        model_key = args.model if args.model and not args.model.startswith("-") else None
+        handle_test(model_key, registry, config, json_output, args.timeout)
+    elif cmd == "tool":
+        if args.rest:
+            config.active_tool = args.rest[0]
+            config.save()
+            print(f"已选择工具：{args.rest[0].upper()}")
         else:
-            parser.print_help()
-    elif args.command == "switch":
-        if args.list:
-            handle_list(registry, args.json)
+            print("请指定工具名称：claude, gemini, codex")
+            sys.exit(1)
+    elif cmd == "config":
+        if args.rest:
+            handle_config(args.rest[0], config)
+        else:
+            print("请指定操作：show, edit")
+            sys.exit(1)
+    elif cmd == "switch":
+        if args.model:
+            handle_switch(args.model, registry, switcher, json_output)
+        elif args.list:
+            handle_list(registry, json_output)
         elif args.current:
-            handle_status(switcher, registry, args.json)
-        elif args.model:
-            handle_switch(args.model, registry, switcher, args.json)
+            handle_status(switcher, registry, json_output)
         else:
             print("请指定模型名称或使用 --list 查看所有模型")
             sys.exit(1)
-    elif args.command == "list":
-        handle_list(registry, args.json)
-    elif args.command == "status":
-        handle_status(switcher, registry, args.json)
-    elif args.command == "test":
-        handle_test(args.model, registry, config, args.json, args.timeout)
-    elif args.command == "tool":
-        config.active_tool = args.tool
-        config.save()
-        print(f"已选择工具：{args.tool.upper()}")
-    elif args.command == "config":
-        handle_config(args.action, config)
+    else:
+        # 假设是模型名称，直接切换
+        handle_switch(cmd, registry, switcher, json_output)
 
 
 def handle_list(registry: ModelRegistry, json_output: bool = False):
