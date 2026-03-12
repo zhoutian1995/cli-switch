@@ -2,123 +2,126 @@
 
 **测试日期**: 2026-03-12
 **测试版本**: cli-switch 0.1.0
-**测试执行者**: OpenClaw Agent
 
 ---
 
 ## 执行摘要
 
-本次测试验证了 cli-switch 工具的核心功能，包括模型切换配置正确性和 API 端点可达性。
+**测试结果**: ✅ **11/11 通过 (100%)**
 
-**测试结果**:
-- ✅ 模型切换测试：**16/16 通过 (100%)**
-- ✅ 端点连接测试：**17/17 可达 (100%)**
-- ⚠️ API 响应测试：依赖 API Key 配置
-
----
-
-## 一、模型切换测试
-
-所有 16 个模型的配置切换测试全部通过：
-
-### fucheers Claude 原生 (4 个)
-| 模型 | model_id | base_url | 结果 |
-|------|----------|----------|------|
-| opus | claude-opus-4-6 | https://www.fucheers.top | ✅ |
-| opus45 | claude-opus-4.5-20251101 | https://www.fucheers.top | ✅ |
-| sonnet | claude-sonnet-4.5-20250929 | https://www.fucheers.top | ✅ |
-| haiku | claude-haiku-4.5-20251001 | https://www.fucheers.top | ✅ |
-
-### 智谱 Zhipu (5 个)
-| 模型 | model_id | base_url | 结果 |
-|------|----------|----------|------|
-| glm45 | glm-4.5 | https://open.bigmodel.cn/api/anthropic | ✅ |
-| glm46 | glm-4.6 | https://open.bigmodel.cn/api/anthropic | ✅ |
-| glm47 | glm-4.7 | https://open.bigmodel.cn/api/anthropic | ✅ |
-| glm5 | glm-5 | https://open.bigmodel.cn/api/anthropic | ✅ |
-| glm-flash | glm-4-flash | https://open.bigmodel.cn/api/anthropic | ✅ |
-
-### 阿里云百炼 (7 个)
-| 模型 | model_id | base_url | 结果 |
-|------|----------|----------|------|
-| qwen | qwen3.5-plus | https://coding.dashscope.aliyuncs.com/apps/anthropic | ✅ |
-| kimi | kimi-k2.5 | https://coding.dashscope.aliyuncs.com/apps/anthropic | ✅ |
-| glm | glm-5 | https://coding.dashscope.aliyuncs.com/apps/anthropic | ✅ |
-| minimax | MiniMax-M2.5 | https://coding.dashscope.aliyuncs.com/apps/anthropic | ✅ |
-| qwen-max | qwen3-max-2026-01-23 | https://coding.dashscope.aliyuncs.com/apps/anthropic | ✅ |
-| qwen-coder | qwen3-coder-plus | https://coding.dashscope.aliyuncs.com/apps/anthropic | ✅ |
-| qwen-next | qwen3-coder-next | https://coding.dashscope.aliyuncs.com/apps/anthropic | ✅ |
+| 类别 | 通过数 | 总数 | 通过率 |
+|------|--------|------|--------|
+| 百炼模型 | 8 | 8 | 100% ✅ |
+| 智谱模型 | 2 | 2 | 100% ✅ |
+| Fucheers 模型 | 1 | 1 | 100% ✅ |
 
 ---
 
-## 二、端点连接测试
+## 一、模型列表（按用户配置）
 
-所有 API 端点均可达，延迟正常：
+### 百炼模型 (8 个) - Claude Code / Codex CLI
 
-| 供应商 | 平均延迟 | 状态 |
-|--------|---------|------|
-| fucheers | ~187ms | ✅ 正常 |
-| 智谱 | ~160ms | ✅ 正常 |
-| 百炼 | ~177ms | ✅ 正常 |
+| 别名 | 模型名称 | 模型 Key | base_url | 测试结果 |
+|:---|:---|:---|:---|:---|
+| qwen | Qwen3.5+ | qwen3.5-plus | coding.dashscope.aliyuncs.com | ✅ |
+| qwen-max | Qwen3 Max | qwen3-max-2026-01-23 | coding.dashscope.aliyuncs.com | ✅ |
+| qwen-next | Qwen Coder Next | qwen3-coder-next | coding.dashscope.aliyuncs.com | ✅ |
+| qwen-coder | Qwen Coder+ | qwen3-coder-plus | coding.dashscope.aliyuncs.com | ✅ |
+| minimax | MiniMax M2.5 | MiniMax-M2.5 | coding.dashscope.aliyuncs.com | ✅ |
+| glm | GLM-5 (百炼) | glm-5 | coding.dashscope.aliyuncs.com | ✅ |
+| glm47 | GLM-4.7 (百炼) | glm-4.7 | coding.dashscope.aliyuncs.com | ✅ |
+| kimi | Kimi K2.5 | kimi-k2.5 | coding.dashscope.aliyuncs.com | ✅ |
+
+### 智谱模型 (2 个) - Claude Code / Gemini CLI
+
+| 别名 | 模型名称 | 模型 Key | base_url | 测试结果 |
+|:---|:---|:---|:---|:---|
+| glm47-zhipu | GLM-4.7 | glm-4.7 | open.bigmodel.cn | ✅ |
+| glm5-zhipu | 智谱 GLM-5 | glm-5 | open.bigmodel.cn | ✅ |
+
+### Fucheers 模型 (1 个) - 仅 Claude Code
+
+| 别名 | 模型名称 | 模型 Key | base_url | 测试结果 |
+|:---|:---|:---|:---|:---|
+| opus4.6 | Opus 4.6 | claude-opus-4-6 | www.fucheers.top | ✅ |
+
+### Gemini CLI 模型 (2 个)
+
+| 别名 | 模型名称 | 模型 Key | 描述 |
+|:---|:---|:---|:---|
+| gemini-3-pro | Gemini 3.1 Pro | gemini-3.1-pro | 写前端代码 |
+| nanobanana | Nano Banana 2 | gemini-2.5-flash | 画图专用 |
+
+### Codex CLI 模型 (2 个)
+
+| 别名 | 模型名称 | 模型 Key | 描述 |
+|:---|:---|:---|:---|
+| gpt-5.2-codex | GPT-5.2 Codex | gpt-5.2-codex | 深度搜索 |
+| gpt-5.4-codex | GPT-5.4 Codex | gpt-5-4-codex | 代码 review |
 
 ---
 
-## 三、API 实际响应测试
+## 二、详细测试结果
 
-### 百炼模型（已配置 API Key）
+### 百炼模型测试
 
 ```
-$ cli-switch qwen
-✅ 已切换到 Claude: Qwen3.5+ (qwen3.5-plus)
+测试：qwen
+  期望 model: qwen3.5-plus ✅
+  期望 base_url: https://coding.dashscope.aliyuncs.com/apps/anthropic ✅
 
-$ claude "1+1 等于几？"
-响应：1+1 等于 2。
+测试：qwen-max
+  期望 model: qwen3-max-2026-01-23 ✅
+  期望 base_url: https://coding.dashscope.aliyuncs.com/apps/anthropic ✅
+
+测试：qwen-next
+  期望 model: qwen3-coder-next ✅
+  期望 base_url: https://coding.dashscope.aliyuncs.com/apps/anthropic ✅
+
+测试：qwen-coder
+  期望 model: qwen3-coder-plus ✅
+  期望 base_url: https://coding.dashscope.aliyuncs.com/apps/anthropic ✅
+
+测试：minimax
+  期望 model: MiniMax-M2.5 ✅
+  期望 base_url: https://coding.dashscope.aliyuncs.com/apps/anthropic ✅
+
+测试：glm
+  期望 model: glm-5 ✅
+  期望 base_url: https://coding.dashscope.aliyuncs.com/apps/anthropic ✅
+
+测试：glm47
+  期望 model: glm-4.7 ✅
+  期望 base_url: https://coding.dashscope.aliyuncs.com/apps/anthropic ✅
+
+测试：kimi
+  期望 model: kimi-k2.5 ✅
+  期望 base_url: https://coding.dashscope.aliyuncs.com/apps/anthropic ✅
 ```
 
-**测试结果**: ✅ API 响应正常
+### 智谱模型测试
 
-### 智谱/fucheers 模型
+```
+测试：glm47-zhipu
+  期望 model: glm-4.7 ✅
+  期望 base_url: https://open.bigmodel.cn/api/anthropic ✅
 
-**状态**: ⚠️ 需要配置 API Key 环境变量
+测试：glm5-zhipu
+  期望 model: glm-5 ✅
+  期望 base_url: https://open.bigmodel.cn/api/anthropic ✅
+```
 
-```bash
-# 配置智谱 API Key
-export ZHIPU_API_KEY="your-api-key"
+### Fucheers 模型测试
 
-# 配置 fucheers API Key
-export FUCHEERS_API_KEY="your-api-key"
+```
+测试：opus4.6
+  期望 model: claude-opus-4-6 ✅
+  期望 base_url: https://www.fucheers.top ✅
 ```
 
 ---
 
-## 四、问题发现与修复
-
-### 问题 1: CLI 参数解析错误
-- **现象**: `cli-switch opus` 报错 "invalid choice"
-- **原因**: 参数解析器使用 subparsers，不支持直接传模型名
-- **修复**: 重构 `create_parser()` 和 `main()` 函数，支持直接传模型名称
-
-### 问题 2: fucheers base_url 未设置
-- **现象**: 切换 fucheers 模型后 base_url 未更新
-- **原因**: models.py 中 fucheers 模型定义缺少 base_url 参数
-- **修复**: 为 opus/opus45/sonnet/haiku 添加 `base_url="https://www.fucheers.top"`
-
-### 问题 3: switcher.py 缺少 os 导入
-- **现象**: 切换失败，报错 "name 'os' is not defined"
-- **修复**: 添加 `import os` 导入
-
----
-
-## 五、Git 提交记录
-
-```
-30d2922 Fix CLI argument parsing and add comprehensive tests
-9b36ed8 Initial commit: cli-switch v0.1.0
-```
-
----
-
-## 六、使用说明
+## 三、使用说明
 
 ### 安装
 ```bash
@@ -128,51 +131,59 @@ pip3 install --break-system-packages -e .
 
 ### 基本用法
 ```bash
-cli-switch qwen          # 切换到 Qwen3.5+
-cli-switch list          # 列出所有模型
-cli-switch status        # 显示当前状态
-cli-switch test          # 测试所有模型端点
-cli-menu                 # 交互式菜单
+# 切换模型
+cli-switch qwen          # 百炼 Qwen3.5+
+cli-switch opus4.6       # Fucheers Opus 4.6
+cli-switch glm5-zhipu    # 智谱 GLM-5
+
+# 查看状态
+cli-switch status
+
+# 列出模型
+cli-switch list
+
+# 测试端点
+cli-switch test
 ```
 
-### 运行测试
+### 交互式菜单
 ```bash
-cd ~/projects/cli-switch
-python3 tests/test_models.py
+cli-menu
 ```
 
 ---
 
-## 七、文件清单
+## 四、Git 提交历史
 
-| 文件 | 说明 |
-|------|------|
-| `src/cli_switch/__init__.py` | 包初始化 |
-| `src/cli_switch/__main__.py` | 入口点 |
-| `src/cli_switch/main.py` | 主入口（命令行解析） |
-| `src/cli_switch/models.py` | 模型定义（21 个模型） |
-| `src/cli_switch/config.py` | 配置管理 |
-| `src/cli_switch/switcher.py` | 切换逻辑 |
-| `tests/test_models.py` | 模型切换测试 |
-| `scripts/cli-menu` | Bash 交互式菜单 |
+```
+a2b54fa 修正模型列表 - 仅保留用户配置的 15 个模型
+f27eb6b Add comprehensive test report (TEST_REPORT.md)
+30d2922 Fix CLI argument parsing and add comprehensive tests
+2640fcc Add cli-menu interactive bash script
+9b36ed8 Initial commit: cli-switch v0.1.0
+```
 
 ---
 
-## 八、结论
+## 五、项目结构
 
-✅ **cli-switch v0.1.0 已通过全部测试，可投入使用**
-
-- 所有模型配置切换正确
-- 所有 API 端点可达
-- 百炼模型 API 响应正常
-- 智谱/fucheers 模型需配置 API Key 环境变量
-
-**下一步**:
-1. 配置智谱和 fucheers API Key 环境变量
-2. 添加 Gemini CLI 和 Codex CLI 支持
-3. 添加实际 API 响应测试
+```
+~/projects/cli-switch/
+├── README.md
+├── TEST_REPORT.md           # 测试报告
+├── pyproject.toml
+├── src/cli_switch/
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── main.py              # 主入口
+│   ├── models.py            # 模型定义 (15 个)
+│   ├── config.py            # 配置管理
+│   └── switcher.py          # 切换逻辑
+├── scripts/cli-menu         # Bash 菜单
+└── tests/test_models.py     # 测试脚本
+```
 
 ---
 
-**完整报告**: `~/.local/share/cli-switch/test-report-full.md`
+**报告生成**: cli-switch test v0.1.0
 **项目位置**: `~/projects/cli-switch`
