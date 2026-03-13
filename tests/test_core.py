@@ -20,22 +20,22 @@ class TestModelRegistry(unittest.TestCase):
 
     def test_total_models(self):
         """测试模型总数"""
-        self.assertEqual(self.registry.count(), 15)
+        self.assertEqual(self.registry.count(), 23)
 
     def test_claude_models(self):
-        """测试 Claude 模型数量 (8 个百炼 + 2 个智谱 + 1 个 Fucheers = 11)"""
+        """测试 Claude 模型数量 (8 个百炼 + 2 个智谱 + 7 个 Fucheers = 17)"""
         count = self.registry.count(ToolType.CLAUDE)
-        self.assertEqual(count, 11)
+        self.assertEqual(count, 17)
 
     def test_gemini_models(self):
-        """测试 Gemini 模型数量 (2 个智谱 + 2 个 Gemini 原生 = 4)"""
+        """测试 Gemini 模型数量 (2 个智谱 + 5 个 Gemini 原生 = 7)"""
         count = self.registry.count(ToolType.GEMINI)
-        self.assertEqual(count, 4)
+        self.assertEqual(count, 7)
 
     def test_codex_models(self):
-        """测试 Codex 模型数量 (8 个百炼 + 2 个 Codex 原生 = 10)"""
+        """测试 Codex 模型数量 (8 个百炼 + 1 个 Codex 原生 = 9)"""
         count = self.registry.count(ToolType.CODEX)
-        self.assertEqual(count, 10)
+        self.assertEqual(count, 9)
 
     def test_get_model(self):
         """测试获取模型"""
@@ -52,7 +52,7 @@ class TestModelRegistry(unittest.TestCase):
     def test_list_models(self):
         """测试列出模型"""
         all_models = self.registry.list()
-        self.assertEqual(len(all_models), 15)
+        self.assertEqual(len(all_models), 23)
 
 
 class TestConfig(unittest.TestCase):
@@ -78,6 +78,100 @@ class TestConfig(unittest.TestCase):
         self.assertGreater(self.config.response_timeout, 0)
 
 
+class TestCustomModels(unittest.TestCase):
+    """测试自定义模型管理"""
+
+    def setUp(self):
+        self.registry = ModelRegistry()
+        self.test_key = "__test_custom__"
+        self._cleanup()
+
+    def tearDown(self):
+        self._cleanup()
+
+    def _cleanup(self):
+        """清理测试模型"""
+        ModelRegistry.remove_custom_model(self.test_key)
+
+    def test_add_custom_model(self):
+        """测试添加自定义模型"""
+        data = {
+            "name": "Test Custom Model",
+            "tool": "claude",
+            "model_id": "test-custom-id",
+            "description": "For testing",
+            "base_url": "http://localhost:8080/v1",
+            "api_key_env": "TEST_KEY",
+        }
+        success = ModelRegistry.add_custom_model(self.test_key, data)
+        self.assertTrue(success)
+
+        # 验证可以加载
+        config = ModelRegistry.load_custom_models()
+        self.assertIn(self.test_key, config.get("models", {}))
+
+    def test_remove_custom_model(self):
+        """测试删除自定义模型"""
+        # 先添加
+        ModelRegistry.add_custom_model(
+            self.test_key, {"name": "To Remove", "tool": "claude", "model_id": "remove-id"}
+        )
+        # 再删除
+        success = ModelRegistry.remove_custom_model(self.test_key)
+        self.assertTrue(success)
+
+        # 验证已删除
+        config = ModelRegistry.load_custom_models()
+        self.assertNotIn(self.test_key, config.get("models", {}))
+
+    def test_custom_model_override_builtin(self):
+        """测试自定义模型覆盖内置模型"""
+        # 使用内置模型的 key 添加自定义配置
+        override_key = "qwen"
+        original_model = self.registry.get(override_key)
+        self.assertIsNotNone(original_model)
+
+        # 添加覆盖配置
+        ModelRegistry.add_custom_model(
+            override_key,
+            {
+                "name": "Overridden Qwen",
+                "tool": "claude",
+                "model_id": "overridden-qwen",
+                "description": "Custom override",
+            },
+        )
+
+        # 重新创建 registry 加载自定义配置
+        new_registry = ModelRegistry()
+        model = new_registry.get(override_key)
+
+        self.assertIsNotNone(model)
+        self.assertEqual(model.name, "Overridden Qwen")
+        self.assertEqual(model.source, "custom")
+
+        # 清理
+        ModelRegistry.remove_custom_model(override_key)
+
+    def test_custom_model_source_tag(self):
+        """测试模型来源标记"""
+        # 添加自定义模型
+        ModelRegistry.add_custom_model(
+            self.test_key, {"name": "Source Test", "tool": "claude", "model_id": "source-test"}
+        )
+
+        # 重新加载
+        new_registry = ModelRegistry()
+        model = new_registry.get(self.test_key)
+
+        self.assertIsNotNone(model)
+        self.assertEqual(model.source, "custom")
+
+        # 内置模型检查
+        builtin = new_registry.get("qwen")
+        self.assertEqual(builtin.source, "builtin")
+
+
 class TestModel(unittest.TestCase):
     """测试模型类"""
 
@@ -88,7 +182,7 @@ class TestModel(unittest.TestCase):
             name="Test Model",
             tool=ToolType.CLAUDE,
             model_id="test-id",
-            description="Test description"
+            description="Test description",
         )
         d = model.to_dict()
         self.assertEqual(d["key"], "test")

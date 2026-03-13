@@ -11,7 +11,7 @@ pip install cli-switch
 ### 从源码安装
 
 ```bash
-git clone https://github.com/opencode/cli-switch.git
+git clone https://github.com/anomalyco/cli-switch.git
 cd cli-switch
 pip install -e .
 ```

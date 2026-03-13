@@ -32,8 +32,16 @@ config.yaml.bak
 
 # OS
 .DS_Store
+Thumbs.db
 
 # Build
 build/
 dist/
 *.egg-info/
+
+# Ruff
+.ruff_cache/
+
+# Internal docs (not for open-source)
+DEPLOYMENT_*.md
+FINAL_*.md

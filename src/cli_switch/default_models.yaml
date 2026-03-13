@@ -1,0 +1,263 @@
+# cli-switch 内置模型定义
+# 用户自定义模型请写入 ~/.cli-switch/custom_models.yaml（相同 key 会覆盖此文件）
+
+models:
+  # === 百炼模型 (8 个) - 支持 Claude Code / Codex CLI ===
+  # Codex 须使用 0.80.0 版本（wire_api="chat"），最新版不支持 Coding Plan
+  qwen:
+    name: "Qwen3.5+"
+    tool: claude
+    model_id: "qwen3.5-plus"
+    description: "通义千问 3.5 增强版"
+    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
+    api_key_env: "BAILIAN_API_KEY"
+    tags: [bailian, recommended]
+    supported_tools: [claude, codex]
+    codex_model_id: "qwen3.5-plus"
+
+  qwen-max:
+    name: "Qwen3 Max"
+    tool: claude
+    model_id: "qwen3-max-2026-01-23"
+    description: "通义千问 3 Max 版 (2026-01-23 版本)"
+    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
+    api_key_env: "BAILIAN_API_KEY"
+    tags: [bailian]
+    supported_tools: [claude, codex]
+    codex_model_id: "qwen3-max-2026-01-23"
+
+  qwen-next:
+    name: "Qwen Coder Next"
+    tool: claude
+    model_id: "qwen3-coder-next"
+    description: "通义千问 3 Coder 下一代版"
+    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
+    api_key_env: "BAILIAN_API_KEY"
+    tags: [bailian, code]
+    supported_tools: [claude, codex]
+    codex_model_id: "qwen3-coder-next"
+
+  qwen-coder:
+    name: "Qwen Coder+"
+    tool: claude
+    model_id: "qwen3-coder-plus"
+    description: "通义千问 3 Coder 增强版"
+    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
+    api_key_env: "BAILIAN_API_KEY"
+    tags: [bailian, code]
+    supported_tools: [claude, codex]
+    codex_model_id: "qwen3-coder-plus"
+
+  minimax:
+    name: "MiniMax M2.5"
+    tool: claude
+    model_id: "MiniMax-M2.5"
+    description: "一般"
+    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
+    api_key_env: "BAILIAN_API_KEY"
+    tags: [bailian]
+    supported_tools: [claude, codex]
+    codex_model_id: "MiniMax-M2.5"
+
+  glm:
+    name: "GLM-5 (百炼)"
+    tool: claude
+    model_id: "glm-5"
+    description: "代码专用"
+    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
+    api_key_env: "BAILIAN_API_KEY"
+    tags: [bailian, code]
+    supported_tools: [claude, codex]
+    codex_model_id: "glm-5"
+
+  glm47:
+    name: "GLM-4.7 (百炼)"
+    tool: claude
+    model_id: "glm-4.7"
+    description: "代码模型"
+    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
+    api_key_env: "BAILIAN_API_KEY"
+    tags: [bailian, code]
+    supported_tools: [claude, codex]
+    codex_model_id: "glm-4.7"
+
+  kimi:
+    name: "Kimi K2.5"
+    tool: claude
+    model_id: "kimi-k2.5"
+    description: "一般"
+    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
+    api_key_env: "BAILIAN_API_KEY"
+    tags: [bailian]
+    supported_tools: [claude, codex]
+    codex_model_id: "kimi-k2.5"
+
+  # === 智谱模型 (2 个) - 支持 Claude Code / Gemini CLI ===
+  # Gemini CLI 需要使用定制版，通过 OPENROUTER_BASE_URL 配置
+  glm47-zhipu:
+    name: "GLM-4.7"
+    tool: claude
+    model_id: "glm-4.7"
+    description: "平衡"
+    base_url: "https://open.bigmodel.cn/api/anthropic"
+    api_key_env: "ZHIPU_AUTH_TOKEN"
+    tags: [zhipu]
+    supported_tools: [claude, gemini]
+    gemini_model_id: "glm-4.7"
+
+  glm5-zhipu:
+    name: "智谱 GLM-5"
+    tool: claude
+    model_id: "glm-5"
+    description: "最强"
+    base_url: "https://open.bigmodel.cn/api/anthropic"
+    api_key_env: "ZHIPU_AUTH_TOKEN"
+    tags: [zhipu]
+    supported_tools: [claude, gemini]
+    gemini_model_id: "glm-5"
+
+  # === Fucheers 模型增强版 ===
+  opus4.6:
+    name: "Opus 4.6"
+    tool: claude
+    model_id: "claude-opus-4-6"
+    description: "写后端代码专用"
+    base_url: "https://www.fucheers.top"
+    api_key_env: "ANTHROPIC_AUTH_TOKEN"
+    tags: [fucheers]
+    supported_tools: [claude]
+
+  opus4.6-thinking:
+    name: "Opus 4.6 Thinking"
+    tool: claude
+    model_id: "claude-opus-4-6-thinking"
+    description: "写后端代码带思考过程"
+    base_url: "https://www.fucheers.top"
+    api_key_env: "ANTHROPIC_AUTH_TOKEN"
+    tags: [fucheers, thinking]
+    supported_tools: [claude]
+
+  opus4.5-20251101:
+    name: "Opus 4.5 (2025-11-01)"
+    tool: claude
+    model_id: "claude-opus-4-5-20251101"
+    description: "Opus 4.5 公历版本"
+    base_url: "https://www.fucheers.top"
+    api_key_env: "ANTHROPIC_AUTH_TOKEN"
+    tags: [fucheers, historical]
+    supported_tools: [claude]
+
+  opus4.5-20251101-thinking:
+    name: "Opus 4.5 (2025-11-01) Thinking"
+    tool: claude
+    model_id: "claude-opus-4-5-20251101-thinking"
+    description: "Opus 4.5 带思考过程"
+    base_url: "https://www.fucheers.top"
+    api_key_env: "ANTHROPIC_AUTH_TOKEN"
+    tags: [fucheers, thinking, historical]
+    supported_tools: [claude]
+
+  sonnet4.6:
+    name: "Sonnet 4.6"
+    tool: claude
+    model_id: "claude-sonnet-4-6"
+    description: "通用均衡模型"
+    base_url: "https://www.fucheers.top"
+    api_key_env: "ANTHROPIC_AUTH_TOKEN"
+    tags: [fucheers, balanced]
+    supported_tools: [claude]
+
+  sonnet4.6-thinking:
+    name: "Sonnet 4.6 Thinking"
+    tool: claude
+    model_id: "claude-sonnet-4-6-thinking"
+    description: "通用均衡模型带思考过程"
+    base_url: "https://www.fucheers.top"
+    api_key_env: "ANTHROPIC_AUTH_TOKEN"
+    tags: [fucheers, balanced, thinking]
+    supported_tools: [claude]
+
+  haiku4.5-20251001:
+    name: "Haiku 4.5 (2025-10-01)"
+    tool: claude
+    model_id: "claude-haiku-4-5-20251001"
+    description: "高速轻量模型"
+    base_url: "https://www.fucheers.top"
+    api_key_env: "ANTHROPIC_AUTH_TOKEN"
+    tags: [fucheers, fast]
+    supported_tools: [claude]
+
+  # === Gemini CLI 原生模型 (4 个) - 仅支持 Gemini CLI ===
+  gemini-3.1-pro:
+    name: "Gemini 3.1 Pro"
+    tool: gemini
+    model_id: "gemini-3.1-pro-preview"
+    description: "写前端代码 - 推理能力领先、多模态理解、长上下文"
+    api_key_env: "GEMINI_API_KEY"
+    tags: [google, recommended]
+    supported_tools: [gemini]
+
+  nanobanana:
+    name: "nanoBanana 2"
+    tool: gemini
+    model_id: "gemini-3.1-flash-image-preview"
+    description: "画图 - 全球排名第一、4K 画质、精准文字渲染"
+    api_base_url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent"
+    api_key_env: "GEMINI_API_KEY"
+    tags: [google, image, multimodal]
+    supported_tools: [gemini]
+
+  imagen-4-ultra:
+    name: "Imagen 4.0 Ultra"
+    tool: gemini
+    model_id: "imagen-4.0-generate-preview-05-20"
+    description: "画图 - Google 最新图片生成模型、最高画质、Imagen 优先"
+    api_base_url: "https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-05-20:predict"
+    api_key_env: "GEMINI_API_KEY"
+    tags: [google, image]
+    supported_tools: [gemini]
+    image_priority: 1
+
+  gemini-2.5-flash:
+    name: "Gemini 2.5 Flash"
+    tool: gemini
+    model_id: "gemini-2.5-flash"
+    description: "快速响应 - 免费、多模态"
+    api_key_env: "GEMINI_API_KEY"
+    tags: [google, free]
+    supported_tools: [gemini]
+
+  gemini-2.5-pro:
+    name: "Gemini 2.5 Pro"
+    tool: gemini
+    model_id: "gemini-2.5-pro"
+    description: "高级推理 - 稳定版、复杂任务"
+    api_key_env: "GEMINI_API_KEY"
+    tags: [google]
+    supported_tools: [gemini]
+
+  # === Codex CLI 原生模型 (1 个) - 通过 aiclaude.xyz 代理 ===
+  gpt-5.2-codex:
+    name: "GPT-5.2 Codex"
+    tool: codex
+    model_id: "gpt-5.2-codex"
+    description: "深度搜索"
+    base_url: "https://api.aiclaude.xyz/v1"
+    api_key_env: "OPENAI_API_KEY"
+    tags: [openai]
+    supported_tools: [codex]
+
+  # === MCP Servers (Model Context Protocol) ===
+  # 智谱视觉 MCP (用于 Claude Code)
+  zhi-mcp-server:
+    name: "智谱视觉 MCP"
+    description: "通过 MCP 传输 Claude 的视觉能力到智谱 API"
+    mcp_type: "server"
+    enabled: false
+    server_config:
+      binary: "zhipu-vision-mcp-server"
+      port_range: [8450, 8550]
+      api_key_env: "ZHIPU_AUTH_TOKEN"
+    mcp_endpoints:
+      - "/vision"
+    supported_tools: [claude]

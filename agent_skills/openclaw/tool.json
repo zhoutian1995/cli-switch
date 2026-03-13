@@ -1,0 +1,36 @@
+{
+  "name": "cli-switch",
+  "description": "AI CLI工具模型切换器 - 支持Claude Code/Gemini CLI/Codex CLI",
+  "tools": [
+    {
+      "name": "switch_model",
+      "description": "切换到指定的AI模型",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "模型名称，如 qwen, glm, glm5-zhipu 等"
+          },
+          "tool": {
+            "type": "string",
+            "enum": ["claude", "gemini", "codex"],
+            "description": "目标CLI工具"
+          }
+        },
+        "required": ["model"]
+      },
+      "command": "cli-switch --tool ${tool} ${model}"
+    },
+    {
+      "name": "list_models",
+      "description": "列出所有可用模型",
+      "command": "cli-switch list --json"
+    },
+    {
+      "name": "current_model",
+      "description": "获取当前使用的模型",
+      "command": "cli-switch status --json"
+    }
+  ]
+}

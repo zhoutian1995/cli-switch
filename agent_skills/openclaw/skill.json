@@ -1,0 +1,155 @@
+{
+  "name": "cli-switch",
+  "version": "1.1.0",
+  "description": "AI CLI工具模型切换器 - 支持Claude Code/Gemini CLI/Codex CLI的多终端隔离切换",
+  "author": "OpenClaw Team",
+  "tools": [
+    {
+      "name": "switch_model",
+      "description": "切换到指定的AI模型，支持跨工具切换",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "模型名称，如 qwen, glm, glm5-zhipu, qwen-coder 等"
+          },
+          "tool": {
+            "type": "string",
+            "enum": ["claude", "gemini", "codex"],
+            "default": "claude",
+            "description": "目标CLI工具"
+          }
+        },
+        "required": ["model"]
+      },
+      "command": "cli-switch --tool ${tool} ${model}",
+      "examples": [
+        {
+          "description": "切换到百炼GLM-5（代码专用）",
+          "command": "cli-switch glm"
+        },
+        {
+          "description": "切换到智谱GLM-5（Gemini CLI）",
+          "command": "cli-switch --tool gemini glm5-zhipu"
+        },
+        {
+          "description": "切换到Qwen Coder（代码任务）",
+          "command": "cli-switch qwen-coder"
+        }
+      ]
+    },
+    {
+      "name": "get_current_model",
+      "description": "获取当前使用的模型信息",
+      "command": "cli-switch --json status",
+      "returns": {
+        "type": "object",
+        "properties": {
+          "active_tool": "string",
+          "active_model": "string",
+          "model_name": "string"
+        }
+      }
+    },
+    {
+      "name": "list_models",
+      "description": "列出所有可用模型",
+      "command": "cli-switch --json list",
+      "returns": {
+        "type": "object",
+        "properties": {
+          "claude": "array",
+          "gemini": "array",
+          "codex": "array"
+        }
+      }
+    },
+    {
+      "name": "add_custom_model",
+      "description": "添加自定义模型",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "模型唯一标识"
+          },
+          "model_id": {
+            "type": "string",
+            "description": "实际模型ID"
+          },
+          "tool": {
+            "type": "string",
+            "enum": ["claude", "gemini", "codex"]
+          },
+          "base_url": {
+            "type": "string",
+            "description": "API端点URL"
+          },
+          "description": {
+            "type": "string",
+            "description": "模型描述"
+          }
+        },
+        "required": ["key", "model_id", "tool"]
+      },
+      "command": "cli-switch model add ${key} --model-id ${model_id} --tool ${tool} --base-url ${base_url} --description \"${description}\""
+    }
+  ],
+  "hooks": {
+    "pre_tool_use": [
+      {
+        "matcher": ".*",
+        "command": "cli-switch hook pre-tool-use --tool claude"
+      }
+    ],
+    "post_tool_use": [
+      {
+        "matcher": ".*",
+        "command": "cli-switch hook post-tool-use --tool claude"
+      }
+    ]
+  },
+  "use_cases": [
+    {
+      "name": "代码开发",
+      "description": "使用代码专用模型进行开发任务",
+      "recommended_model": "qwen-coder 或 glm",
+      "command": "cli-switch qwen-coder"
+    },
+    {
+      "name": "通用对话",
+      "description": "使用推荐的通用模型",
+      "recommended_model": "qwen",
+      "command": "cli-switch qwen"
+    },
+    {
+      "name": "深度推理",
+      "description": "使用最强推理模型",
+      "recommended_model": "qwen-max 或 glm5-zhipu",
+      "command": "cli-switch qwen-max"
+    },
+    {
+      "name": "多模态任务",
+      "description": "使用支持多模态的Gemini模型",
+      "recommended_model": "gemini-3.1-pro 或 nanobanana",
+      "command": "cli-switch --tool gemini gemini-3.1-pro"
+    }
+  ],
+  "safety": {
+    "terminal_isolation": true,
+    "concurrent_safe": true,
+    "ghost_tty_protection": true,
+    "atomic_writes": true,
+    "hook_reentrancy_protection": true
+  },
+  "requirements": {
+    "python": ">=3.8",
+    "environment_variables": [
+      "BAILIAN_API_KEY",
+      "ZHIPU_AUTH_TOKEN",
+      "ANTHROPIC_API_KEY"
+    ]
+  }
+}

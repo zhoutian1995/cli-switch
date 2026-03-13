@@ -2,13 +2,19 @@
 模型定义和管理
 """
 
+import sys
 from dataclasses import dataclass, field
+from importlib.resources import files
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 from enum import Enum
+
+import yaml
 
 
 class ToolType(Enum):
     """支持的 CLI 工具类型"""
+
     CLAUDE = "claude"
     GEMINI = "gemini"
     CODEX = "codex"
@@ -28,7 +34,11 @@ class Model:
         api_key_env: API 密钥的环境变量名
         tags: 标签列表
         supported_tools: 支持的工具列表 (用于菜单展示)
+        gemini_model_id: Gemini CLI 使用的模型 ID (可选)
+        codex_model_id: Codex CLI 使用的模型 ID (可选)
+        source: 模型来源 (builtin/custom)
     """
+
     key: str
     name: str
     tool: ToolType
@@ -38,6 +48,10 @@ class Model:
     api_key_env: Optional[str] = None
     tags: List[str] = field(default_factory=list)
     supported_tools: List[ToolType] = field(default_factory=list)
+    gemini_model_id: Optional[str] = None  # Gemini CLI 专用模型 ID
+    codex_model_id: Optional[str] = None  # Codex CLI 专用模型 ID
+    api_base_url: Optional[str] = None  # 自定义 API 端点（用于图片生成等）
+    source: str = "builtin"  # builtin 或 custom
 
     def __post_init__(self):
         # 如果没有指定支持的工具列表，默认只支持主要工具
@@ -56,153 +70,149 @@ class Model:
             "api_key_env": self.api_key_env,
             "tags": self.tags,
             "supported_tools": [t.value for t in self.supported_tools],
+            "gemini_model_id": self.gemini_model_id,
+            "codex_model_id": self.codex_model_id,
+            "api_base_url": self.api_base_url,
+            "source": self.source,
         }
 
 
 class ModelRegistry:
-    """模型注册表 - 管理所有可用模型"""
+    """模型注册表 - 管理所有可用模型
+
+    加载优先级：
+    1. 内置 default_models.yaml（随包分发）
+    2. 用户 ~/.cli-switch/custom_models.yaml（覆盖内置）
+    """
+
+    CUSTOM_MODELS_PATH = Path.home() / ".cli-switch" / "custom_models.yaml"
 
     def __init__(self):
         self._models: Dict[str, Model] = {}
         self._load_default_models()
 
     def _load_default_models(self):
-        """加载默认模型配置
+        """从 YAML 文件加载模型配置"""
+        # 1. 加载内置模型
+        builtin = self._load_builtin_yaml()
+        for key, data in builtin.items():
+            model = self._dict_to_model(key, data, source="builtin")
+            if model:
+                self.register(model)
 
-        根据用户提供的模型列表:
-        - 百炼模型 (8 个): 支持 Claude Code / Codex CLI
-        - 智谱模型 (2 个): 支持 Claude Code / Gemini CLI
-        - Fucheers (1 个): 仅支持 Claude Code
-        - Gemini 原生 (2 个): 仅支持 Gemini CLI
-        - Codex 原生 (2 个): 仅支持 Codex CLI
+        # 2. 加载用户自定义模型（覆盖内置）
+        if self.CUSTOM_MODELS_PATH.exists():
+            custom = self._load_yaml_file(self.CUSTOM_MODELS_PATH)
+            for key, data in custom.items():
+                model = self._dict_to_model(key, data, source="custom")
+                if model:
+                    self.register(model)
+
+    def _load_builtin_yaml(self) -> Dict[str, Any]:
+        """加载包内 default_models.yaml"""
+        try:
+            yaml_text = (
+                files("cli_switch").joinpath("default_models.yaml").read_text(encoding="utf-8")
+            )
+            config = yaml.safe_load(yaml_text)
+            return config.get("models", {}) if config else {}
+        except Exception as e:
+            print(f"警告：无法加载内置模型配置: {e}", file=sys.stderr)
+            return {}
+
+    def _load_yaml_file(self, path: Path) -> Dict[str, Any]:
+        """加载外部 YAML 文件"""
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f.read())
+            return config.get("models", {}) if config else {}
+        except yaml.YAMLError as e:
+            print(f"警告：自定义模型配置 YAML 解析错误 ({path}): {e}", file=sys.stderr)
+            return {}
+        except Exception as e:
+            print(f"警告：无法读取自定义模型配置 ({path}): {e}", file=sys.stderr)
+            return {}
+
+    def _dict_to_model(
+        self, key: str, data: Dict[str, Any], source: str = "builtin"
+    ) -> Optional[Model]:
+        """将 YAML 字典转换为 Model 对象
+
+        缺少必填字段时打印友好提示并跳过，不崩溃。
+        同时会过滤掉MCP服务器配置等特殊条目
+
+        Args:
+            key: 模型键
+            data: 模型数据字典
+            source: 源标识
+        Returns:
+            Model 对象或 None
         """
-        models = [
-            # === 百炼模型 (8 个) - 支持 Claude Code / Codex CLI ===
-            Model(
-                key="qwen", name="Qwen3.5+", tool=ToolType.CLAUDE, model_id="qwen3.5-plus",
-                description="通义千问 3.5 增强版",
-                base_url="https://coding.dashscope.aliyuncs.com/apps/anthropic",
-                api_key_env="BAILIAN_API_KEY",
-                tags=["bailian", "recommended"],
-                supported_tools=[ToolType.CLAUDE, ToolType.CODEX]
-            ),
-            Model(
-                key="qwen-max", name="Qwen3 Max", tool=ToolType.CLAUDE, model_id="qwen3-max-2026-01-23",
-                description="通义千问 3 Max 版 (2026-01-23 版本)",
-                base_url="https://coding.dashscope.aliyuncs.com/apps/anthropic",
-                api_key_env="BAILIAN_API_KEY",
-                tags=["bailian"],
-                supported_tools=[ToolType.CLAUDE, ToolType.CODEX]
-            ),
-            Model(
-                key="qwen-next", name="Qwen Coder Next", tool=ToolType.CLAUDE, model_id="qwen3-coder-next",
-                description="通义千问 3 Coder 下一代版",
-                base_url="https://coding.dashscope.aliyuncs.com/apps/anthropic",
-                api_key_env="BAILIAN_API_KEY",
-                tags=["bailian", "code"],
-                supported_tools=[ToolType.CLAUDE, ToolType.CODEX]
-            ),
-            Model(
-                key="qwen-coder", name="Qwen Coder+", tool=ToolType.CLAUDE, model_id="qwen3-coder-plus",
-                description="通义千问 3 Coder 增强版",
-                base_url="https://coding.dashscope.aliyuncs.com/apps/anthropic",
-                api_key_env="BAILIAN_API_KEY",
-                tags=["bailian", "code"],
-                supported_tools=[ToolType.CLAUDE, ToolType.CODEX]
-            ),
-            Model(
-                key="minimax", name="MiniMax M2.5", tool=ToolType.CLAUDE, model_id="MiniMax-M2.5",
-                description="一般",
-                base_url="https://coding.dashscope.aliyuncs.com/apps/anthropic",
-                api_key_env="BAILIAN_API_KEY",
-                tags=["bailian"],
-                supported_tools=[ToolType.CLAUDE, ToolType.CODEX]
-            ),
-            Model(
-                key="glm", name="GLM-5 (百炼)", tool=ToolType.CLAUDE, model_id="glm-5",
-                description="代码专用",
-                base_url="https://coding.dashscope.aliyuncs.com/apps/anthropic",
-                api_key_env="BAILIAN_API_KEY",
-                tags=["bailian", "code"],
-                supported_tools=[ToolType.CLAUDE, ToolType.CODEX]
-            ),
-            Model(
-                key="glm47", name="GLM-4.7 (百炼)", tool=ToolType.CLAUDE, model_id="glm-4.7",
-                description="代码模型",
-                base_url="https://coding.dashscope.aliyuncs.com/apps/anthropic",
-                api_key_env="BAILIAN_API_KEY",
-                tags=["bailian", "code"],
-                supported_tools=[ToolType.CLAUDE, ToolType.CODEX]
-            ),
-            Model(
-                key="kimi", name="Kimi K2.5", tool=ToolType.CLAUDE, model_id="kimi-k2.5",
-                description="一般",
-                base_url="https://coding.dashscope.aliyuncs.com/apps/anthropic",
-                api_key_env="BAILIAN_API_KEY",
-                tags=["bailian"],
-                supported_tools=[ToolType.CLAUDE, ToolType.CODEX]
-            ),
+        # 过滤MCP服务器配置等特殊条目
+        if key.endswith("-mcp-server") or "mcp-server" in str(data.get("name", "")).lower():
+            print(f"⚠️ 跳过非模型配置项: {key} (MCP服务器配置)", file=sys.stderr)
+            return None
+        if data.get("mcp_type") == "server":
+            print(f"⚠️ 跳过非模型配置项: {key} (MCP服务器)", file=sys.stderr)
+            return None
 
-            # === 智谱模型 (2 个) - 支持 Claude Code / Gemini CLI ===
-            Model(
-                key="glm47-zhipu", name="GLM-4.7", tool=ToolType.CLAUDE, model_id="glm-4.7",
-                description="平衡",
-                base_url="https://open.bigmodel.cn/api/anthropic",
-                api_key_env="ZHIPU_API_KEY",
-                tags=["zhipu"],
-                supported_tools=[ToolType.CLAUDE, ToolType.GEMINI]
-            ),
-            Model(
-                key="glm5-zhipu", name="智谱 GLM-5", tool=ToolType.CLAUDE, model_id="glm-5",
-                description="最强",
-                base_url="https://open.bigmodel.cn/api/anthropic",
-                api_key_env="ZHIPU_API_KEY",
-                tags=["zhipu"],
-                supported_tools=[ToolType.CLAUDE, ToolType.GEMINI]
-            ),
+        # 检查是否包含必要的模型字段
+        required_fields = ["tool", "model_id"]
+        has_required_fields = any(field in data for field in required_fields)
 
-            # === Fucheers 模型 (1 个) - 仅支持 Claude Code ===
-            Model(
-                key="opus4.6", name="Opus 4.6", tool=ToolType.CLAUDE, model_id="claude-opus-4-6",
-                description="写后端代码专用",
-                base_url="https://www.fucheers.top",
-                api_key_env="FUCHEERS_API_KEY",
-                tags=["fucheers"],
-                supported_tools=[ToolType.CLAUDE]
-            ),
-
-            # === Gemini CLI 原生模型 (2 个) - 仅支持 Gemini CLI ===
-            Model(
-                key="gemini-2.5-pro", name="Gemini 2.5 Pro", tool=ToolType.GEMINI, model_id="gemini-2.5-pro",
-                description="写前端代码 - 推理能力领先",
-                api_key_env="GEMINI_API_KEY",
-                tags=["google", "recommended"],
-                supported_tools=[ToolType.GEMINI]
-            ),
-            Model(
-                key="nanobanana", name="Gemini 2.5 Flash", tool=ToolType.GEMINI, model_id="gemini-2.5-flash",
-                description="画图专用",
-                api_key_env="GEMINI_API_KEY",
-                tags=["google", "image"],
-                supported_tools=[ToolType.GEMINI]
-            ),
-
-            # === Codex CLI 原生模型 (2 个) - 仅支持 Codex CLI ===
-            Model(
-                key="gpt-5.2-codex", name="GPT-5.2 Codex", tool=ToolType.CODEX, model_id="gpt-5.2-codex",
-                description="深度搜索",
-                tags=["openai"],
-                supported_tools=[ToolType.CODEX]
-            ),
-            Model(
-                key="gpt-5.4-codex", name="GPT-5.4 Codex", tool=ToolType.CODEX, model_id="gpt-5-4-codex",
-                description="代码 review",
-                tags=["openai"],
-                supported_tools=[ToolType.CODEX]
-            ),
+        # 检查是否为服务器配置
+        server_config_fields = [
+            "mcp_type",
+            "mcp_endpoints",
+            "server_config",
+            "binary",
+            "port_range",
         ]
-        for m in models:
-            self.register(m)
+        is_server_config = any(field in data for field in server_config_fields)
+
+        if not has_required_fields and is_server_config:
+            print(f"⚠️ 跳过非模型配置项: {key} (服务器配置)", file=sys.stderr)
+            return None
+
+        # 统一必填字段检查
+        for required in ("name", "tool", "model_id"):
+            if required not in data:
+                print(f"⚠️ 跳过模型 '{key}': 缺少必填字段 '{required}'", file=sys.stderr)
+                return None
+
+        # tool 字符串转 ToolType
+        try:
+            tool = ToolType(data["tool"])
+        except ValueError:
+            print(
+                f"⚠️ 跳过模型 '{key}': 未知的工具类型 '{data['tool']}' (支持: claude, gemini, codex)",
+                file=sys.stderr,
+            )
+            return None
+
+        # supported_tools 转换
+        supported_tools = []
+        for t in data.get("supported_tools", []):
+            try:
+                supported_tools.append(ToolType(t))
+            except ValueError:
+                pass  # 忽略无效的工具类型
+
+        return Model(
+            key=key,
+            name=data["name"],
+            tool=tool,
+            model_id=data["model_id"],
+            description=data.get("description", ""),
+            base_url=data.get("base_url"),
+            api_key_env=data.get("api_key_env"),
+            tags=data.get("tags", []),
+            supported_tools=supported_tools,
+            gemini_model_id=data.get("gemini_model_id"),
+            codex_model_id=data.get("codex_model_id"),
+            api_base_url=data.get("api_base_url"),
+            source=source,
+        )
 
     def register(self, model: Model):
         self._models[model.key] = model
@@ -238,3 +248,54 @@ class ModelRegistry:
         for tool in ToolType:
             result[tool.value] = [m.to_dict() for m in self.list(tool)]
         return result
+
+    # === 自定义模型管理 ===
+
+    @classmethod
+    def load_custom_models(cls) -> Dict[str, Any]:
+        """读取用户自定义模型配置"""
+        if not cls.CUSTOM_MODELS_PATH.exists():
+            return {"models": {}}
+        try:
+            with open(cls.CUSTOM_MODELS_PATH, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f.read())
+            return config if config else {"models": {}}
+        except Exception:
+            return {"models": {}}
+
+    @classmethod
+    def save_custom_models(cls, config: Dict[str, Any]) -> bool:
+        """保存用户自定义模型配置（全量写入）"""
+        try:
+            cls.CUSTOM_MODELS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            temp_file = cls.CUSTOM_MODELS_PATH.with_suffix(".yaml.tmp")
+            with open(temp_file, "w", encoding="utf-8") as f:
+                yaml.dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+            temp_file.rename(cls.CUSTOM_MODELS_PATH)
+            return True
+        except Exception:
+            return False
+
+    @classmethod
+    def add_custom_model(cls, key: str, data: Dict[str, Any]) -> bool:
+        """添加自定义模型"""
+        config = cls.load_custom_models()
+        if "models" not in config:
+            config["models"] = {}
+        config["models"][key] = data
+        return cls.save_custom_models(config)
+
+    @classmethod
+    def remove_custom_model(cls, key: str) -> bool:
+        """移除自定义模型"""
+        config = cls.load_custom_models()
+        models = config.get("models", {})
+        if key not in models:
+            return False
+        del models[key]
+        return cls.save_custom_models(config)
+
+    def is_custom(self, key: str) -> bool:
+        """检查模型是否为自定义模型"""
+        model = self.get(key)
+        return model is not None and model.source == "custom"

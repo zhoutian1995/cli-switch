@@ -28,13 +28,13 @@ show_main_menu() {
     echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${YELLOW}1) Claude Code CLI${NC}                                      ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}     支持模型：fucheers(4) + 智谱 (5) + 百炼 (4) = 13 个模型   ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}     支持模型：fucheers(1) + 智谱 (2) + 百炼 (8) = 11 个模型   ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${YELLOW}2) Gemini CLI${NC}                                           ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}     支持模型：Google(2)                                     ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}     支持模型：智谱 (2) + Google Gemini (4) = 6 个模型       ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${YELLOW}3) Codex CLI${NC}                                            ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}     支持模型：OpenAI(2)                                     ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}     支持模型：百炼 (8) + OpenAI(1) = 9 个模型                 ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${GREEN}4) 测试所有模型${NC}                                          ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}  ${GREEN}5) 显示当前状态${NC}                                          ${CYAN}║${NC}"
@@ -42,6 +42,8 @@ show_main_menu() {
     echo -e "${CYAN}║${NC}  ${RED}0) 退出${NC}                                                    ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${YELLOW}提示：选择工具后将直接进入模型选择，确认后启动 CLI${NC}"
     echo ""
 }
 
@@ -68,7 +70,7 @@ show_model_menu() {
     echo -e "${CYAN}║${NC}  ${GREEN}${tool^^} 模型选择${NC}                                          ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
 
-    cli-switch list --json 2>/dev/null | python3 -c "
+    cli-switch --json list 2>/dev/null | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 tool = '$tool'
@@ -81,14 +83,16 @@ if tool in data:
     echo -e "${CYAN}║${NC}  ${RED}0) 返回主菜单${NC}                                            ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
+    echo -e "${YELLOW}提示：选择模型后将切换并启动${NC}"
+    echo ""
 }
 
-# 切换模型
-switch_model() {
+# 切换模型（仅切换，不启动 CLI）
+switch_model_only() {
     local tool="$1"
     local idx="$2"
 
-    local model_key=$(cli-switch list --json 2>/dev/null | python3 -c "
+    local model_key=$(cli-switch --json list 2>/dev/null | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 models = data.get('$tool', [])
@@ -100,10 +104,39 @@ if 0 <= idx < len(models):
     if [ -n "$model_key" ]; then
         echo ""
         echo -e "${GREEN}正在切换到：${model_key}...${NC}"
-        cli-switch "$model_key"
+        cli-switch --tool "$tool" "$model_key"
         echo ""
-        read -p "按回车键继续..." -n 1 -r
-        echo
+        echo -e "${GREEN}切换完成！${NC}"
+    fi
+}
+
+# 切换模型并启动 CLI
+switch_model_and_launch() {
+    local tool="$1"
+    local idx="$2"
+
+    local model_key=$(cli-switch --json list 2>/dev/null | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+models = data.get('$tool', [])
+idx = $idx - 1
+if 0 <= idx < len(models):
+    print(models[idx]['key'])
+")
+
+    if [ -n "$model_key" ]; then
+        echo ""
+        echo -e "${GREEN}正在切换到：${model_key}...${NC}"
+        cli-switch --tool "$tool" "$model_key"
+        echo ""
+        echo -e "${GREEN}正在启动 $tool CLI...${NC}"
+        echo -e "${YELLOW}按 Ctrl+C 退出 CLI${NC}"
+        echo ""
+        case "$tool" in
+            claude) claude ;;
+            gemini) gemini ;;
+            codex) codex ;;
+        esac
     fi
 }
 
@@ -112,10 +145,10 @@ test_all_models() {
     clear_screen
     echo ""
     echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}  ${YELLOW}正在测试所有模型...${NC}                                        ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${YELLOW}正在测试所有模型 (端到端聊天测试)...${NC}                        ${CYAN}║${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    cli-switch test 2>&1
+    cli-switch chat-test 2>&1
     echo ""
     read -p "按回车键继续..." -n 1 -r
     echo
@@ -146,22 +179,31 @@ main() {
         case "$choice" in
             0) clear_screen; echo -e "${GREEN}👋 再见！${NC}"; exit 0 ;;
             1)
+                # Claude Code
                 show_model_menu "claude"
-                local count=$(cli-switch list --json | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('claude', [])))")
+                local count=$(cli-switch --json list 2>&1 | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('claude', [])))")
                 local model_choice=$(get_input "请选择模型 (0-$count): " "$count")
-                [ "$model_choice" != "0" ] && switch_model "claude" "$model_choice"
+                if [ "$model_choice" != "0" ]; then
+                    switch_model_and_launch "claude" "$model_choice"
+                fi
                 ;;
             2)
+                # Gemini
                 show_model_menu "gemini"
-                local count=$(cli-switch list --json | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('gemini', [])))")
+                local count=$(cli-switch --json list 2>&1 | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('gemini', [])))")
                 local model_choice=$(get_input "请选择模型 (0-$count): " "$count")
-                [ "$model_choice" != "0" ] && switch_model "gemini" "$model_choice"
+                if [ "$model_choice" != "0" ]; then
+                    switch_model_and_launch "gemini" "$model_choice"
+                fi
                 ;;
             3)
+                # Codex
                 show_model_menu "codex"
-                local count=$(cli-switch list --json | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('codex', [])))")
+                local count=$(cli-switch --json list 2>&1 | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('codex', [])))")
                 local model_choice=$(get_input "请选择模型 (0-$count): " "$count")
-                [ "$model_choice" != "0" ] && switch_model "codex" "$model_choice"
+                if [ "$model_choice" != "0" ]; then
+                    switch_model_and_launch "codex" "$model_choice"
+                fi
                 ;;
             4) test_all_models ;;
             5) show_status ;;
