@@ -5,16 +5,19 @@
 - TTY 专属状态（终端隔离）
 - 全局 fallback 状态
 - Hook 执行（防重入）
+- [Phase 2.2] 文件锁保护 + 原子写入（temp+rename）
 """
 
 import json
 import os
 import re
+import tempfile
 from pathlib import Path
 from typing import Tuple, Optional, Dict, Any
 
 from .models import Model, ToolType
 from .config import Config
+from .filelock import get_lock
 
 
 class SwitchError(Exception):
@@ -62,24 +65,38 @@ class Switcher:
         if not config_path.exists():
             return False, f"Claude 配置文件不存在：{config_path}"
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                settings = json.load(f)
-            if "env" not in settings:
-                settings["env"] = {}
-            env = settings["env"]
-            env["ANTHROPIC_MODEL"] = model.model_id
-            env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = model.model_id
-            env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = model.model_id
-            env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = model.model_id
-            if model.base_url:
-                env["ANTHROPIC_BASE_URL"] = model.base_url
-            if model.api_key_env:
-                api_key = os.getenv(model.api_key_env)
-                if api_key:
-                    env["ANTHROPIC_AUTH_TOKEN"] = api_key
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(settings, f, indent=2, ensure_ascii=False)
-            # 传入 model 对象，以便 _save_current_model 获取完整信息
+            # [Phase 2.2] 排他锁保护整个读-改-写流程
+            with get_lock("claude"):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    settings = json.load(f)
+                if "env" not in settings:
+                    settings["env"] = {}
+                env = settings["env"]
+                env["ANTHROPIC_MODEL"] = model.model_id
+                env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = model.model_id
+                env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = model.model_id
+                env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = model.model_id
+                if model.base_url:
+                    env["ANTHROPIC_BASE_URL"] = model.base_url
+                if model.api_key_env:
+                    api_key = os.getenv(model.api_key_env)
+                    if api_key:
+                        env["ANTHROPIC_AUTH_TOKEN"] = api_key
+
+                # [Phase 2.2] 原子写入：temp + os.replace
+                fd, temp_path = tempfile.mkstemp(suffix=".json", dir=str(config_path.parent))
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as f:
+                        json.dump(settings, f, indent=2, ensure_ascii=False)
+                    os.replace(temp_path, str(config_path))
+                except BaseException:
+                    # 写入失败，清理临时文件
+                    try:
+                        os.unlink(temp_path)
+                    except OSError:
+                        pass
+                    raise
+            # 锁已释放，保存 session 状态（有独立的隔离机制）
             self._save_current_model(model.key, model=model, tool="claude")
             return True, f"已切换到 Claude: {model.name} ({model.model_id})"
         except json.JSONDecodeError as e:
@@ -92,30 +109,44 @@ class Switcher:
         if not config_path.exists():
             return False, f"Gemini 配置文件不存在：{config_path}"
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
+            # [Phase 2.2] 排他锁保护整个读-改-写流程
+            with get_lock("gemini"):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config = json.load(f)
 
-            model_id = getattr(model, "gemini_model_id", None) or model.model_id
-            config["model"] = model_id
+                model_id = getattr(model, "gemini_model_id", None) or model.model_id
+                config["model"] = model_id
 
-            # 检查是否为智谱模型（需要配置OPENROUTER环境变量）
-            is_zhipu = model.api_key_env == "ZHIPU_AUTH_TOKEN" or (
-                model.base_url and "open.bigmodel.cn" in model.base_url
-            )
+                # 检查是否为智谱模型（需要配置OPENROUTER环境变量）
+                is_zhipu = model.api_key_env == "ZHIPU_AUTH_TOKEN" or (
+                    model.base_url and "open.bigmodel.cn" in model.base_url
+                )
 
-            if is_zhipu:
-                # 智谱模型使用 OPENROUTER 配置
-                if "env" not in config:
-                    config["env"] = {}
-                config["env"]["OPENROUTER_BASE_URL"] = "https://open.bigmodel.cn/api/coding/paas/v4"
-                if model.api_key_env:
-                    api_key = os.getenv(model.api_key_env)
-                    if api_key:
-                        config["env"]["OPENROUTER_API_KEY"] = api_key
+                if is_zhipu:
+                    # 智谱模型使用 OPENROUTER 配置
+                    if "env" not in config:
+                        config["env"] = {}
+                    config["env"]["OPENROUTER_BASE_URL"] = (
+                        "https://open.bigmodel.cn/api/coding/paas/v4"
+                    )
+                    if model.api_key_env:
+                        api_key = os.getenv(model.api_key_env)
+                        if api_key:
+                            config["env"]["OPENROUTER_API_KEY"] = api_key
 
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
-            # 传入 model 对象
+                # [Phase 2.2] 原子写入：temp + os.replace
+                fd, temp_path = tempfile.mkstemp(suffix=".json", dir=str(config_path.parent))
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as f:
+                        json.dump(config, f, indent=2, ensure_ascii=False)
+                    os.replace(temp_path, str(config_path))
+                except BaseException:
+                    try:
+                        os.unlink(temp_path)
+                    except OSError:
+                        pass
+                    raise
+            # 锁已释放
             self._save_current_model(model.key, model=model, tool="gemini")
             return True, f"已切换到 Gemini: {model.name} ({model_id})"
         except json.JSONDecodeError as e:
@@ -134,73 +165,27 @@ class Switcher:
         if not config_path.exists():
             return False, f"Codex 配置文件不存在：{config_path}"
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                content = f.read()
+            # [Phase 2.2] 排他锁保护整个读-改-写流程
+            with get_lock("codex"):
+                with open(config_path, "r", encoding="utf-8") as f:
+                    content = f.read()
 
-            # 获取模型 ID
-            model_id = getattr(model, "codex_model_id", None) or model.model_id
+                # 获取模型 ID
+                model_id = getattr(model, "codex_model_id", None) or model.model_id
 
-            # 判断是 Coding Plan 模型还是 OpenAI 原生模型
-            is_coding_plan = model.base_url and "dashscope.aliyuncs.com" in model.base_url
+                # 判断是 Coding Plan 模型还是 OpenAI 原生模型
+                is_coding_plan = model.base_url and "dashscope.aliyuncs.com" in model.base_url
 
-            if is_coding_plan:
-                # Coding Plan 模型配置
-                provider_name = "Model_Studio_Coding_Plan"
-                base_url = "https://coding.dashscope.aliyuncs.com/v1"
-                env_key = "BAILIAN_API_KEY"  # Coding Plan 使用 BAILIAN_API_KEY 环境变量
+                if is_coding_plan:
+                    # Coding Plan 模型配置
+                    provider_name = "Model_Studio_Coding_Plan"
+                    base_url = "https://coding.dashscope.aliyuncs.com/v1"
+                    env_key = "BAILIAN_API_KEY"  # Coding Plan 使用 BAILIAN_API_KEY 环境变量
 
-                # 检查是否已有 model_providers 配置
-                if f"[model_providers.{provider_name}]" not in content:
-                    # 添加 model_providers 配置
-                    provider_config = f'''
-
-[model_providers.{provider_name}]
-name = "{provider_name}"
-base_url = "{base_url}"
-env_key = "{env_key}"
-wire_api = "chat"
-'''
-                    content = content.rstrip() + provider_config + "\n"
-                else:
-                    # 更新现有的 provider 配置
-                    content = re.sub(
-                        r"\[model_providers\." + provider_name + r"\].*?(?=\n\[|\Z)",
-                        f'''[model_providers.{provider_name}]
-name = "{provider_name}"
-base_url = "{base_url}"
-env_key = "{env_key}"
-wire_api = "chat"
-''',
-                        content,
-                        flags=re.DOTALL,
-                    )
-
-                # 更新 model_provider 和 model
-                if re.search(r"^model_provider\s*=", content, flags=re.MULTILINE):
-                    content = re.sub(
-                        r"^model_provider\s*=.*",
-                        f'model_provider = "{provider_name}"',
-                        content,
-                        flags=re.MULTILINE,
-                    )
-                else:
-                    content = f'model_provider = "{provider_name}"\n' + content
-
-                if re.search(r'^model\s*=\s*"', content, flags=re.MULTILINE):
-                    content = re.sub(
-                        r'^model\s*=\s*".*"', f'model = "{model_id}"', content, flags=re.MULTILINE
-                    )
-                else:
-                    content = f'model = "{model_id}"\n' + content
-
-            else:
-                # GPT 模型通过代理（aiclaude.xyz）
-                provider_name = "aiclaude_proxy"
-                base_url = model.base_url or "https://api.aiclaude.xyz/v1"
-                env_key = model.api_key_env or "OPENAI_API_KEY"
-
-                if f"[model_providers.{provider_name}]" not in content:
-                    provider_config = f'''
+                    # 检查是否已有 model_providers 配置
+                    if f"[model_providers.{provider_name}]" not in content:
+                        # 添加 model_providers 配置
+                        provider_config = f'''
 
 [model_providers.{provider_name}]
 name = "{provider_name}"
@@ -208,40 +193,104 @@ base_url = "{base_url}"
 env_key = "{env_key}"
 wire_api = "chat"
 '''
-                    content = content.rstrip() + provider_config + "\n"
-                else:
-                    content = re.sub(
-                        r"\[model_providers\." + provider_name + r"\].*?(?=\n\[|\Z)",
-                        f'''[model_providers.{provider_name}]
+                        content = content.rstrip() + provider_config + "\n"
+                    else:
+                        # 更新现有的 provider 配置
+                        content = re.sub(
+                            r"\[model_providers\." + provider_name + r"\].*?(?=\n\[|\Z)",
+                            f'''[model_providers.{provider_name}]
 name = "{provider_name}"
 base_url = "{base_url}"
 env_key = "{env_key}"
 wire_api = "chat"
 ''',
-                        content,
-                        flags=re.DOTALL,
-                    )
+                            content,
+                            flags=re.DOTALL,
+                        )
 
-                if re.search(r"^model_provider\s*=", content, flags=re.MULTILINE):
-                    content = re.sub(
-                        r"^model_provider\s*=.*",
-                        f'model_provider = "{provider_name}"',
-                        content,
-                        flags=re.MULTILINE,
-                    )
+                    # 更新 model_provider 和 model
+                    if re.search(r"^model_provider\s*=", content, flags=re.MULTILINE):
+                        content = re.sub(
+                            r"^model_provider\s*=.*",
+                            f'model_provider = "{provider_name}"',
+                            content,
+                            flags=re.MULTILINE,
+                        )
+                    else:
+                        content = f'model_provider = "{provider_name}"\n' + content
+
+                    if re.search(r'^model\s*=\s*"', content, flags=re.MULTILINE):
+                        content = re.sub(
+                            r'^model\s*=\s*".*"',
+                            f'model = "{model_id}"',
+                            content,
+                            flags=re.MULTILINE,
+                        )
+                    else:
+                        content = f'model = "{model_id}"\n' + content
+
                 else:
-                    content = f'model_provider = "{provider_name}"\n' + content
+                    # GPT 模型通过代理（aiclaude.xyz）
+                    provider_name = "aiclaude_proxy"
+                    base_url = model.base_url or "https://api.aiclaude.xyz/v1"
+                    env_key = model.api_key_env or "OPENAI_API_KEY"
 
-                if re.search(r'^model\s*=\s*"', content, flags=re.MULTILINE):
-                    content = re.sub(
-                        r'^model\s*=\s*".*"', f'model = "{model_id}"', content, flags=re.MULTILINE
-                    )
-                else:
-                    content = f'model = "{model_id}"\n' + content
+                    if f"[model_providers.{provider_name}]" not in content:
+                        provider_config = f'''
 
-            with open(config_path, "w", encoding="utf-8") as f:
-                f.write(content)
+[model_providers.{provider_name}]
+name = "{provider_name}"
+base_url = "{base_url}"
+env_key = "{env_key}"
+wire_api = "chat"
+'''
+                        content = content.rstrip() + provider_config + "\n"
+                    else:
+                        content = re.sub(
+                            r"\[model_providers\." + provider_name + r"\].*?(?=\n\[|\Z)",
+                            f'''[model_providers.{provider_name}]
+name = "{provider_name}"
+base_url = "{base_url}"
+env_key = "{env_key}"
+wire_api = "chat"
+''',
+                            content,
+                            flags=re.DOTALL,
+                        )
 
+                    if re.search(r"^model_provider\s*=", content, flags=re.MULTILINE):
+                        content = re.sub(
+                            r"^model_provider\s*=.*",
+                            f'model_provider = "{provider_name}"',
+                            content,
+                            flags=re.MULTILINE,
+                        )
+                    else:
+                        content = f'model_provider = "{provider_name}"\n' + content
+
+                    if re.search(r'^model\s*=\s*"', content, flags=re.MULTILINE):
+                        content = re.sub(
+                            r'^model\s*=\s*".*"',
+                            f'model = "{model_id}"',
+                            content,
+                            flags=re.MULTILINE,
+                        )
+                    else:
+                        content = f'model = "{model_id}"\n' + content
+
+                # [Phase 2.2] 原子写入：temp + os.replace
+                fd, temp_path = tempfile.mkstemp(suffix=".toml", dir=str(config_path.parent))
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as f:
+                        f.write(content)
+                    os.replace(temp_path, str(config_path))
+                except BaseException:
+                    try:
+                        os.unlink(temp_path)
+                    except OSError:
+                        pass
+                    raise
+            # 锁已释放
             self._save_current_model(model.key, model=model, tool="codex")
             return True, f"已切换到 Codex: {model.name} ({model_id})"
         except Exception as e:
@@ -266,8 +315,8 @@ wire_api = "chat"
             tool: 工具名称（可选）
             execute_hooks_flag: 是否执行 hooks
         """
-        # 清理无效状态（防止幽灵状态）
-        self.session.cleanup_stale_sessions()
+        # [Phase 2.4] 带频率限制的清理（每 60 秒最多一次）
+        self.session.cleanup_stale_sessions_if_needed()
 
         # 获取模型详细信息
         model_id = model.model_id if model else model_key

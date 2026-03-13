@@ -120,6 +120,39 @@ Hook 配置示例:
 
 
 def main(argv: Optional[list] = None):
+    """入口函数 — 全局 JSON 兜底层
+
+    在 argparse 之前通过原始参数检测 --json，确保即使 argparse
+    或任何 import 崩溃，JSON 模式下也能输出合法 JSON 错误。
+    """
+    raw_args = argv if argv is not None else sys.argv[1:]
+    json_output = "--json" in raw_args or "-j" in raw_args
+
+    try:
+        _main_inner(argv, json_output)
+    except SystemExit:
+        raise  # 各 handler 已输出 JSON/文本，直接透传 exit code
+    except Exception as e:
+        if json_output:
+            import json as _json
+
+            print(
+                _json.dumps(
+                    {
+                        "success": False,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+            sys.exit(1)
+        else:
+            raise
+
+
+def _main_inner(argv: Optional[list] = None, json_output: bool = False):
+    """实际的命令分发逻辑"""
     parser = create_parser()
     args = parser.parse_args(argv)
 
@@ -139,7 +172,21 @@ def main(argv: Optional[list] = None):
             config.config_path = config.config_path.__class__(args.config)
         config.load()
     except ConfigError as e:
-        print(f"配置错误：{e}", file=sys.stderr)
+        if json_output:
+            import json
+
+            print(
+                json.dumps(
+                    {
+                        "success": False,
+                        "error": str(e),
+                        "error_type": "ConfigError",
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        else:
+            print(f"配置错误：{e}", file=sys.stderr)
         sys.exit(2)
 
     registry = ModelRegistry()
@@ -280,20 +327,19 @@ def handle_switch(
             print("可用模型：", ", ".join([m.key for m in registry.list()]))
         sys.exit(1)
 
-    # 临时添加 custom hook 到配置
-    if custom_hook:
-        hooks_module.add_hook("post_switch", custom_hook)
+    # [P0-3 修复] 不再将临时 hook 持久化到 hooks.yaml
+    # 删除了 hooks_module.add_hook() 调用
 
     success, message = switcher.switch(model, target_tool)
 
-    # 执行 custom hook（如果指定）
+    # 临时 hook 只执行一次，不持久化，恢复防重入保护
     if custom_hook and success:
         context = {
             "model": model.key,
             "tool": target_tool or model.tool.value,
             "model_id": model.model_id,
         }
-        hooks_module.execute_hook(custom_hook, context, check_reentrancy=False)
+        hooks_module.execute_hook(custom_hook, context, check_reentrancy=True)
 
     if json_output:
         print(
@@ -1282,9 +1328,13 @@ def handle_health_check(model_key: Optional[str], registry: ModelRegistry, json_
         all_models = [m for m in registry.list() if m.base_url]
         results = []
 
-        print(f"正在检查 {len(all_models)} 个模型的健康状态...")
+        # [P1-5 修复] JSON 模式下不输出进度信息到 stdout
+        if not json_output:
+            print(f"正在检查 {len(all_models)} 个模型的健康状态...")
+
         for model in all_models:
-            print(f"  检查 {model.key}... ", end="", flush=True)
+            if not json_output:
+                print(f"  检查 {model.key}... ", end="", flush=True)
 
             health_result = health_checker.check_model_health(model)
             health_checker.save_health_status(model.key, health_result)
@@ -1297,20 +1347,21 @@ def handle_health_check(model_key: Optional[str], registry: ModelRegistry, json_
             }
             results.append(result_entry)
 
-            status_emoji = {
-                "healthy": "✅",
-                "degraded": "⚠️",
-                "maybe_expired": "⚠️",
-                "error": "❌",
-                "unknown": "❓",
-            }.get(health_result.status.value, "❓")
+            if not json_output:
+                status_emoji = {
+                    "healthy": "✅",
+                    "degraded": "⚠️",
+                    "maybe_expired": "⚠️",
+                    "error": "❌",
+                    "unknown": "❓",
+                }.get(health_result.status.value, "❓")
 
-            latency_str = f"{health_result.latency_ms:.2f}ms" if health_result.latency_ms else "N/A"
-            print(f"{status_emoji} {health_result.message} ({latency_str})")
+                latency_str = (
+                    f"{health_result.latency_ms:.2f}ms" if health_result.latency_ms else "N/A"
+                )
+                print(f"{status_emoji} {health_result.message} ({latency_str})")
 
         if json_output:
-            import json  # 添加json导入
-
             print(
                 json.dumps(
                     {"total_models": len(all_models), "results": results},

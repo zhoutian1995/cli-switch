@@ -6,6 +6,8 @@ Session 管理 - TTY 专属状态管理
 - get_session_state(tty) - 读取 TTY 状态
 - set_session_state(tty, tool, model, model_id, base_url) - 写入 TTY 状态
 - cleanup_stale_sessions() - 清理无效 TTY 状态
+- [Phase 2.4] cleanup_stale_sessions_if_needed() - 带频率限制的清理
+- [Phase 2.5] is_process_alive() - 使用 os.kill 替代 subprocess
 
 状态文件：
 - ~/.cli-switch/sessions/{tty_name}.json - 状态数据
@@ -19,9 +21,15 @@ Session 管理 - TTY 专属状态管理
 import os
 import json
 import subprocess
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
+
+from .filelock import get_lock
+
+# 清理间隔（秒）：每 60 秒最多清理一次
+_CLEANUP_INTERVAL = 60
 
 
 def get_tty() -> Optional[str]:
@@ -57,6 +65,9 @@ def get_pid() -> int:
 def is_process_alive(pid: int) -> bool:
     """检查进程是否存活
 
+    [Phase 2.5] 使用 os.kill(pid, 0) 替代 subprocess.run(["kill", "-0", ...])，
+    避免不必要的进程开销。
+
     Args:
         pid: 进程 ID
 
@@ -64,9 +75,13 @@ def is_process_alive(pid: int) -> bool:
         True 如果进程存活，False 否则
     """
     try:
-        result = subprocess.run(["kill", "-0", str(pid)], capture_output=True, timeout=1)
-        return result.returncode == 0
-    except Exception:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False  # 进程不存在
+    except PermissionError:
+        return True  # 进程存在但无权发信号
+    except OSError:
         return False
 
 
@@ -221,9 +236,10 @@ def set_session_state(
 
 
 def cleanup_stale_sessions() -> int:
-    """清理无效的 TTY 状态文件
+    """清理无效的 TTY 状态文件（加锁版本）
 
-    检查 sessions 目录中的所有状态文件，删除 PID 不再存活的状态
+    [Phase 2.4] 使用 sessions.lock 保护并发清理操作。
+    检查 sessions 目录中的所有状态文件，删除 PID 不再存活的状态。
 
     Returns:
         清理的文件数量
@@ -234,31 +250,73 @@ def cleanup_stale_sessions() -> int:
 
     cleaned = 0
 
-    for state_file in sessions_dir.glob("*.json"):
-        try:
-            with open(state_file, "r", encoding="utf-8") as f:
-                state = json.load(f)
-
-            pid = state.get("pid")
-            if pid is not None and not is_process_alive(pid):
-                # PID 已死，删除状态文件
-                tty = state.get("tty", "").replace("/", "_")
-                env_file = sessions_dir / f"{tty}.env"
-
-                state_file.unlink()
-                if env_file.exists():
-                    env_file.unlink()
-
-                cleaned += 1
-        except Exception:
-            # 文件损坏，尝试删除
+    with get_lock("sessions"):
+        for state_file in sessions_dir.glob("*.json"):
             try:
-                state_file.unlink()
-                cleaned += 1
+                with open(state_file, "r", encoding="utf-8") as f:
+                    state = json.load(f)
+
+                pid = state.get("pid")
+                if pid is not None and not is_process_alive(pid):
+                    # PID 已死，删除状态文件
+                    tty = state.get("tty", "").replace("/", "_")
+                    env_file = sessions_dir / f"{tty}.env"
+
+                    state_file.unlink()
+                    if env_file.exists():
+                        env_file.unlink()
+
+                    cleaned += 1
             except Exception:
-                pass
+                # 文件损坏，尝试删除
+                try:
+                    state_file.unlink()
+                    cleaned += 1
+                except Exception:
+                    pass
 
     return cleaned
+
+
+def cleanup_stale_sessions_if_needed() -> int:
+    """带频率限制的清理（每 60 秒最多执行一次）
+
+    [Phase 2.4] 通过 .last_cleanup 时间戳文件限流，避免多 Agent
+    并发时的 IO 风暴。
+
+    Returns:
+        清理的文件数量，如果跳过则返回 0
+    """
+    sessions_dir = get_sessions_dir()
+    marker_file = sessions_dir / ".last_cleanup"
+
+    try:
+        if marker_file.exists():
+            last_cleanup = marker_file.stat().st_mtime
+            if time.monotonic() - _monotonic_offset() < last_cleanup + _CLEANUP_INTERVAL:
+                # 距离上次清理不足 60 秒，跳过
+                # 注意：这里用文件 mtime（wall clock）做判断
+                elapsed = time.time() - last_cleanup
+                if elapsed < _CLEANUP_INTERVAL:
+                    return 0
+    except Exception:
+        pass
+
+    # 执行清理
+    cleaned = cleanup_stale_sessions()
+
+    # 更新时间戳标记
+    try:
+        marker_file.touch()
+    except Exception:
+        pass
+
+    return cleaned
+
+
+def _monotonic_offset() -> float:
+    """计算 monotonic 时钟与 wall clock 的偏移量（内部辅助函数）"""
+    return time.monotonic() - time.time()
 
 
 def delete_session_state(tty: Optional[str] = None) -> bool:

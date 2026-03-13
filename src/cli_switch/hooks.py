@@ -5,15 +5,20 @@ Hook 执行引擎 - 管理切换后的钩子命令
 - 执行 post_switch 钩子（切换完成后）
 - 执行 pre_tool_use 钩子（工具使用前）
 - 防重入机制（CLI_SWITCH_HOOK_ACTIVE 环境变量）
+- [Phase 2.3] 文件锁保护 hooks.yaml 的读-改-写
+- [Phase 1.2] shlex.quote 防 shell 注入
 
 配置文件：~/.cli-switch/hooks.yaml
 """
 
 import os
+import shlex
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import Callable, List, Optional, Dict, Any
 import yaml
+
+from .filelock import get_lock
 
 
 def get_hooks_config_path() -> Path:
@@ -23,12 +28,8 @@ def get_hooks_config_path() -> Path:
     return config_dir / "hooks.yaml"
 
 
-def load_hooks_config() -> Dict[str, Any]:
-    """加载 hooks 配置
-
-    Returns:
-        hooks 配置字典
-    """
+def _load_hooks_config_unlocked() -> Dict[str, Any]:
+    """加载 hooks 配置（无锁版本，仅在已持有锁时调用）"""
     config_path = get_hooks_config_path()
 
     if not config_path.exists():
@@ -47,8 +48,57 @@ def load_hooks_config() -> Dict[str, Any]:
     return {"hooks": {}}
 
 
+def _save_hooks_config_unlocked(config: Dict[str, Any]) -> bool:
+    """保存 hooks 配置（无锁版本，仅在已持有锁时调用）"""
+    config_path = get_hooks_config_path()
+
+    temp_file = config_path.with_suffix(".yaml.tmp")
+    try:
+        # 原子写入：temp + rename
+        with open(temp_file, "w", encoding="utf-8") as f:
+            yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
+        temp_file.rename(config_path)
+        return True
+    except Exception:
+        # 清理临时文件
+        try:
+            if temp_file.exists():
+                temp_file.unlink()
+        except Exception:
+            pass
+        return False
+
+
+def _modify_hooks_config(modifier_fn: Callable[[Dict[str, Any]], Dict[str, Any]]) -> bool:
+    """加锁的 load-modify-save 原子操作
+
+    整个 load → modifier_fn → save 流程在同一把排他锁内完成，
+    彻底避免 TOCTOU 竞争。
+
+    Args:
+        modifier_fn: 接收当前 config 字典，返回修改后的 config 字典
+
+    Returns:
+        True 如果操作成功
+    """
+    with get_lock("hooks"):
+        config = _load_hooks_config_unlocked()
+        config = modifier_fn(config)
+        return _save_hooks_config_unlocked(config)
+
+
+def load_hooks_config() -> Dict[str, Any]:
+    """加载 hooks 配置（加锁版本，供外部读取使用）
+
+    Returns:
+        hooks 配置字典
+    """
+    with get_lock("hooks"):
+        return _load_hooks_config_unlocked()
+
+
 def save_hooks_config(config: Dict[str, Any]) -> bool:
-    """保存 hooks 配置
+    """保存 hooks 配置（加锁版本，供外部直接写入使用）
 
     Args:
         config: hooks 配置字典
@@ -56,17 +106,8 @@ def save_hooks_config(config: Dict[str, Any]) -> bool:
     Returns:
         True 如果保存成功
     """
-    config_path = get_hooks_config_path()
-
-    try:
-        # 原子写入
-        temp_file = config_path.with_suffix(".yaml.tmp")
-        with open(temp_file, "w", encoding="utf-8") as f:
-            yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
-        temp_file.rename(config_path)
-        return True
-    except Exception:
-        return False
+    with get_lock("hooks"):
+        return _save_hooks_config_unlocked(config)
 
 
 def is_hook_active() -> bool:
@@ -96,10 +137,10 @@ def execute_hook(
         # 被阻止，返回 False 表示未执行
         return False
 
-    # 替换占位符
+    # [P2-2 修复] 替换占位符时使用 shlex.quote 防止 shell 注入
     if context:
         for key, value in context.items():
-            command = command.replace(f"{{{key}}}", str(value))
+            command = command.replace(f"{{{key}}}", shlex.quote(str(value)))
 
     # 设置环境变量
     env = os.environ.copy()
@@ -186,7 +227,7 @@ def execute_post_tool_use(tool: str, model: Optional[str] = None) -> List[bool]:
 
 
 def add_hook(hook_type: str, command: str) -> bool:
-    """添加 hook 命令
+    """添加 hook 命令（加锁的原子 load-modify-save）
 
     Args:
         hook_type: hook 类型
@@ -195,21 +236,20 @@ def add_hook(hook_type: str, command: str) -> bool:
     Returns:
         True 如果添加成功
     """
-    config = load_hooks_config()
 
-    if "hooks" not in config:
-        config["hooks"] = {}
+    def _add(config: Dict[str, Any]) -> Dict[str, Any]:
+        if "hooks" not in config:
+            config["hooks"] = {}
+        if hook_type not in config["hooks"]:
+            config["hooks"][hook_type] = []
+        config["hooks"][hook_type].append(command)
+        return config
 
-    if hook_type not in config["hooks"]:
-        config["hooks"][hook_type] = []
-
-    config["hooks"][hook_type].append(command)
-
-    return save_hooks_config(config)
+    return _modify_hooks_config(_add)
 
 
 def remove_hook(hook_type: str, command: str) -> bool:
-    """移除 hook 命令
+    """移除 hook 命令（加锁的原子 load-modify-save）
 
     Args:
         hook_type: hook 类型
@@ -218,21 +258,18 @@ def remove_hook(hook_type: str, command: str) -> bool:
     Returns:
         True 如果移除成功
     """
-    config = load_hooks_config()
 
-    if "hooks" not in config:
-        return False
+    def _remove(config: Dict[str, Any]) -> Dict[str, Any]:
+        if "hooks" not in config:
+            return config
+        if hook_type not in config["hooks"]:
+            return config
+        hooks = config["hooks"][hook_type]
+        if command in hooks:
+            hooks.remove(command)
+        return config
 
-    if hook_type not in config["hooks"]:
-        return False
-
-    hooks = config["hooks"][hook_type]
-    if command not in hooks:
-        return False
-
-    hooks.remove(command)
-
-    return save_hooks_config(config)
+    return _modify_hooks_config(_remove)
 
 
 def list_hooks(hook_type: Optional[str] = None) -> Dict[str, List[str]]:
@@ -254,7 +291,7 @@ def list_hooks(hook_type: Optional[str] = None) -> Dict[str, List[str]]:
 
 
 def clear_hooks(hook_type: str) -> bool:
-    """清空指定类型的 hooks
+    """清空指定类型的 hooks（加锁的原子 load-modify-save）
 
     Args:
         hook_type: hook 类型
@@ -262,11 +299,11 @@ def clear_hooks(hook_type: str) -> bool:
     Returns:
         True 如果清空成功
     """
-    config = load_hooks_config()
 
-    if "hooks" not in config:
-        return True
+    def _clear(config: Dict[str, Any]) -> Dict[str, Any]:
+        if "hooks" not in config:
+            return config
+        config["hooks"][hook_type] = []
+        return config
 
-    config["hooks"][hook_type] = []
-
-    return save_hooks_config(config)
+    return _modify_hooks_config(_clear)
