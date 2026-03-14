@@ -117,7 +117,7 @@
 
 ```bash
 # 从 GitHub 安装
-git clone https://github.com/anomalyco/cli-switch.git
+git clone https://github.com/zhoutian1995/cli-switch.git
 cd cli-switch
 pipx install -e .
 
@@ -339,7 +339,7 @@ MIT License - 详见 [LICENSE](LICENSE)
 
 ## 📮 联系方式
 
-- **GitHub Issues**: [提交问题](https://github.com/anomalyco/cli-switch/issues)
+- **GitHub Issues**: [提交问题](https://github.com/zhoutian1995/cli-switch/issues)
 - **微信**: 扫码加好友交流
 
 <div align="center">
@@ -347,7 +347,3 @@ MIT License - 详见 [LICENSE](LICENSE)
 ![微信二维码](wechat-qrcode.jpg)
 
 </div>
-
----
-
-**Made with ❤️ for OpenClaw Team**
