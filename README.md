@@ -1,6 +1,6 @@
 # CLI-Switch
 
-🚀 **专业的AI CLI工具模型切换器** - 支持Claude Code、Gemini CLI、Codex CLI的多终端隔离切换
+🚀 **专业的 AI CLI 工具模型切换器** - 支持 Claude Code、Gemini CLI、Codex CLI 的多终端隔离切换
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,34 +8,34 @@
 
 ## ✨ 核心特性
 
-- 🔄 **智能切换** - 一键切换AI模型，支持Claude Code、Gemini CLI、Codex CLI
-- 🖥️ **多终端隔离** - 每个TTY独立状态，Tmux友好
+- 🔄 **智能切换** - 一键切换 AI 模型，支持 Claude Code、Gemini CLI、Codex CLI
+- 🖥️ **多终端隔离** - 每个 TTY 独立状态，Tmux 友好
 - 🔒 **并发安全** - 原子写入，防撕裂保护
-- 👻 **幽灵防御** - PID验证，防止状态泄露
-- 🎯 **跨工具支持** - Codex支持百炼8个模型，Gemini支持智谱2个模型
-- 🤖 **Agent友好** - JSON输出，便于AI Agent调用
-- 🛡️ **防重入保护** - Hook引擎防止死循环
+- 👻 **幽灵防御** - PID 验证，防止状态泄露
+- 🎯 **跨工具支持** - Codex 支持百炼 8 个模型，Gemini 支持智谱 2 个模型
+- 🤖 **Agent 友好** - JSON 输出，便于 AI Agent 调用
+- 🛡️ **防重入保护** - Hook 引擎防止死循环
 
 ## 📦 支持的工具和模型
 
-### Claude Code (11个模型)
+### Claude Code (17 个模型)
 | 提供商 | 模型 | 说明 |
 |-------|------|------|
-| 百炼 | `qwen`, `qwen-max`, `qwen-coder`, `qwen-next`, `glm`, `glm47`, `kimi`, `minimax` | 8个模型 |
-| 智谱 | `glm47-zhipu`, `glm5-zhipu` | 2个模型 |
-| Fucheers | `opus4.6` | 1个模型 |
+| 百炼 | `qwen`, `qwen-max`, `qwen-coder`, `qwen-next`, `glm`, `glm47`, `kimi`, `minimax` | 8 个模型 |
+| 智谱 | `glm47-zhipu`, `glm5-zhipu` | 2 个模型 |
+| Fucheers | `opus4.6`, `opus4.6-thinking`, `opus4.5-20251101`, `opus4.5-20251101-thinking`, `sonnet4.6`, `sonnet4.6-thinking`, `haiku4.5-20251001` | 7 个模型 |
 
-### Gemini CLI (6个模型)
+### Gemini CLI (7 个模型)
 | 提供商 | 模型 | 说明 |
 |-------|------|------|
-| 智谱 | `glm47-zhipu`, `glm5-zhipu` | 2个模型 |
-| Google | `gemini-3.1-pro`, `nanobanana`, `gemini-2.5-flash`, `gemini-2.5-pro` | 4个模型 |
+| 智谱 | `glm47-zhipu`, `glm5-zhipu` | 2 个模型 |
+| Google | `gemini-3.1-pro`, `nanobanana`, `imagen-4-ultra`, `gemini-2.5-flash`, `gemini-2.5-pro` | 5 个模型 |
 
-### Codex CLI (9个模型)
+### Codex CLI (9 个模型)
 | 提供商 | 模型 | 说明 |
 |-------|------|------|
-| 百炼 | `qwen`, `qwen-max`, `qwen-coder`, `qwen-next`, `glm`, `glm47`, `kimi`, `minimax` | 8个模型 |
-| OpenAI | `gpt-5.2-codex` | 1个模型 |
+| 百炼 | `qwen`, `qwen-max`, `qwen-coder`, `qwen-next`, `glm`, `glm47`, `kimi`, `minimax` | 8 个模型 |
+| OpenAI | `gpt-5.2-codex` | 1 个模型 |
 
 ## 🚀 快速开始
 
@@ -62,7 +62,7 @@ cli-switch status
 # 列出所有模型
 cli-switch list
 
-# JSON输出（供Agent使用）
+# JSON 输出（供 Agent 使用）
 cli-switch --json status
 ```
 
@@ -81,21 +81,21 @@ cli-switch --tool codex qwen-coder
 
 ## 🤖 OpenClaw Agent 集成
 
-为您的三个Agent提供智能模型切换能力：
+为您的三个 Agent 提供智能模型切换能力：
 
-### 安装Agent配置
+### 安装 Agent 配置
 
 ```bash
 # 运行安装脚本
 ./install.sh
 
-# 三个Agent自动配置完成：
+# 三个 Agent 自动配置完成：
 # - Team Lead: ~/.claude/skills/openclaw-teamlead
 # - Codex Reviewer: ~/.claude/skills/openclaw-codex-reviewer
 # - Gemini Reviewer: ~/.claude/skills/openclaw-gemini-reviewer
 ```
 
-### Agent使用示例
+### Agent 使用示例
 
 #### Team Lead
 ```bash
@@ -114,7 +114,7 @@ cli-switch status
 
 #### Codex Reviewer
 ```bash
-# 确保使用Codex工具
+# 确保使用 Codex 工具
 cli-switch --tool codex qwen-coder
 
 # 执行代码审查
@@ -123,21 +123,23 @@ cat code.txt | codex exec "Review for bugs, security, performance"
 
 #### Gemini Reviewer
 ```bash
-# 切换到Gemini工具
+# 切换到 Gemini 工具
 cli-switch --tool gemini gemini-3.1-pro
 
 # 执行架构审查
 cat architecture.txt | gemini -p "Review architecture and design"
 ```
 
-详见 [Agent使用指南](docs/AGENT_GUIDE.md)
+详见 [Agent 使用指南](docs/AGENT_GUIDE.md)
 
 ## 📚 详细文档
 
-- [Agent使用指南](docs/AGENT_GUIDE.md) - 三个Agent的详细使用说明
-- [OpenClaw集成](docs/OPENCLAW_INTEGRATION.md) - OpenClaw集成指南
-- [API文档](docs/API.md) - 完整API文档
+- [📖 文档索引](docs/README.md) - 完整文档导航
+- [Agent 使用指南](docs/AGENT_GUIDE.md) - 三个 Agent 详细使用说明
+- [OpenClaw 集成](docs/OPENCLAW_INTEGRATION.md) - OpenClaw 集成指南
+- [API 文档](docs/API.md) - 完整 API 文档
 - [配置说明](docs/CONFIG.md) - 配置文件说明
+- [MCP 配置](docs/MCP.md) - MCP Server 配置
 
 ## 🧪 测试
 
@@ -157,13 +159,15 @@ pytest tests/ --cov=cli_switch
 ### 测试结果
 
 ```
-✅ 50个测试全部通过
-- 模型注册表与YAML外部化: 5个测试
-- 终端隔离与并发防撕裂: 3个测试
-- Shell钩子性能: 2个测试
-- Hook引擎与防重入: 2个测试
-- 其他核心功能: 38个测试
+✅ 50 个测试全部通过
+- 模型注册表与 YAML 外部化：5 个测试
+- 终端隔离与并发防撕裂：3 个测试
+- Shell 钩子性能：2 个测试
+- Hook 引擎与防重入：2 个测试
+- 其他核心功能：38 个测试
 ```
+
+详见 [测试报告](tests/TEST_REPORT.md)
 
 ## 🔧 开发
 
@@ -192,32 +196,33 @@ cli-switch/
 ├── src/cli_switch/          # 源代码
 │   ├── models.py            # 模型注册表
 │   ├── switcher.py          # 切换逻辑
-│   ├── session.py           # TTY状态管理
-│   ├── hooks.py             # Hook引擎
-│   ├── main.py              # CLI入口
+│   ├── session.py           # TTY 状态管理
+│   ├── hooks.py             # Hook 引擎
+│   ├── main.py              # CLI 入口
 │   └── default_models.yaml  # 内置模型配置
 ├── tests/                   # 测试文件
 │   ├── test_core.py         # 核心测试
 │   ├── test_comprehensive.py # 完整测试套件
 │   └── test_terminal_isolation.py # 终端隔离测试
 ├── docs/                    # 文档
-│   ├── AGENT_GUIDE.md       # Agent使用指南
-│   └── OPENCLAW_INTEGRATION.md # OpenClaw集成
+│   ├── README.md            # 文档索引
+│   ├── AGENT_GUIDE.md       # Agent 使用指南
+│   └── OPENCLAW_INTEGRATION.md # OpenClaw 集成
 ├── agent_skills/            # Agent Skills
 │   └── openclaw/
-│       └── skill.json       # OpenClaw Skill定义
+│       └── skill.json       # OpenClaw Skill 定义
 ├── examples/                # 示例
 │   └── integrations/
 │       └── claude-code-hooks.json
-├── SKILL.md                 # Claude Code Skill定义
-├── install.sh              # 安装脚本
-├── README.md               # 本文件
-└── pyproject.toml          # 项目配置
+├── SKILL.md                 # Claude Code Skill 定义
+├── install.sh               # 安装脚本
+├── README.md                # 本文件
+└── pyproject.toml           # 项目配置
 ```
 
 ## 🎯 使用场景
 
-### 场景1: 多模型协作
+### 场景 1: 多模型协作
 ```bash
 # 开发代码
 cli-switch qwen-coder
@@ -225,14 +230,14 @@ cli-switch qwen-coder
 
 # 代码审查
 cli-switch --tool codex qwen-coder
-# Codex审查...
+# Codex 审查...
 
 # 架构评审
 cli-switch --tool gemini gemini-3.1-pro
-# Gemini评审...
+# Gemini 评审...
 ```
 
-### 场景2: 多终端工作
+### 场景 2: 多终端工作
 ```bash
 # Terminal 1: Claude Code
 cli-switch qwen
@@ -247,44 +252,44 @@ cli-switch --tool gemini gemini-3.1-pro
 gemini
 ```
 
-### 场景3: Agent自动化
+### 场景 3: Agent 自动化
 ```bash
-# Agent检测环境
+# Agent 检测环境
 STATUS=$(cli-switch --json status)
 
-# Agent解析状态
+# Agent 解析状态
 MODEL=$(echo $STATUS | jq -r '.active_model')
 
-# Agent智能切换
+# Agent 智能切换
 cli-switch $APPROPRIATE_MODEL
 ```
 
 ## 🛡️ 安全特性
 
 ### 终端隔离
-- 每个TTY独立状态文件
+- 每个 TTY 独立状态文件
 - 不会互相干扰
-- 支持Tmux多窗口
+- 支持 Tmux 多窗口
 
 ### 并发安全
-- 原子写入（临时文件+重命名）
+- 原子写入（临时文件 + 重命名）
 - 防止配置撕裂
-- 支持多Agent并发调用
+- 支持多 Agent 并发调用
 
 ### 幽灵防御
-- PID绑定验证
+- PID 绑定验证
 - 检测进程存活
 - 自动清理无效状态
 
 ### 防重入保护
 - 环境变量标志
-- 防止Hook死循环
+- 防止 Hook 死循环
 - 静默退出机制
 
 ## 📊 性能
 
 - **切换延迟**: < 100ms
-- **TTY检测**: < 10ms
+- **TTY 检测**: < 10ms
 - **状态读取**: < 5ms
 - **并发支持**: 100+ 线程
 
@@ -293,23 +298,26 @@ cli-switch $APPROPRIATE_MODEL
 欢迎贡献！请查看 [贡献指南](CONTRIBUTING.md)
 
 ### 贡献方式
-- 🐛 提交Bug报告
+- 🐛 提交 Bug 报告
 - 💡 提出新功能建议
 - 📝 改进文档
 - 🔧 提交代码修复
 
 ## 📝 更新日志
 
-### v1.1.0 (2024-03-13)
-- ✨ 添加Gemini CLI对智谱模型支持
-- ✨ 添加Codex CLI对百炼模型支持
-- 🐛 修复幽灵TTY防御逻辑
-- 📚 添加完整的Agent使用指南
-- 🧪 添加完整测试套件（50个测试）
+### v1.1.0 (2026-03-13)
+- ✨ 添加 7 个 Fucheers 模型
+- ✨ 添加 MCP Server 管理功能
+- ✨ 添加 Hook 引擎和防重入保护
+- 🐛 修复幽灵 TTY 防御逻辑
+- 📚 添加完整的 Agent 使用指南
+- 🧪 添加完整测试套件（50 个测试）
 
-### v1.0.0 (2024-03-12)
+详见 [更新日志](CHANGELOG.md)
+
+### v1.0.0 (2026-03-10)
 - 🎉 初始发布
-- ✨ 支持Claude Code、Gemini CLI、Codex CLI
+- ✨ 支持 Claude Code、Gemini CLI、Codex CLI
 - ✨ 多终端隔离
 - ✨ 并发安全
 
@@ -331,7 +339,7 @@ MIT License - 详见 [LICENSE](LICENSE)
 ## 📮 联系方式
 
 - GitHub Issues: [提交问题](https://github.com/anomalyco/cli-switch/issues)
-- 企业微信: OpenClaw Team群
+- 企业微信：OpenClaw Team 群
 
 ---
 
