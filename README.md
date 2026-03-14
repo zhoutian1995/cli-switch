@@ -343,7 +343,5 @@ MIT License - 详见 [LICENSE](LICENSE)
 - **微信**: 扫码加好友交流
 
 <div align="center">
-
-![微信二维码](wechat-qrcode.jpg)
-
+<img src="wechat-qrcode.jpg" width="200">
 </div>
