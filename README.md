@@ -1,49 +1,124 @@
 # CLI-Switch
 
-🚀 **专业的 AI CLI 工具模型切换器** - 支持 Claude Code、Gemini CLI、Codex CLI 的多终端隔离切换
+**🚀 让 OpenClaw Agent 用 CLI 工具写代码** - 告别手写代码，拥抱专业工具
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests: 50 passed](https://img.shields.io/badge/tests-50%20passed-brightgreen)]()
 
-## ✨ 核心特性
+---
 
-- 🔄 **智能切换** - 一键切换 AI 模型，支持 Claude Code、Gemini CLI、Codex CLI
-- 🖥️ **多终端隔离** - 每个 TTY 独立状态，Tmux 友好
-- 🔒 **并发安全** - 原子写入，防撕裂保护
-- 👻 **幽灵防御** - PID 验证，防止状态泄露
-- 🎯 **跨工具支持** - Codex 支持百炼 8 个模型，Gemini 支持智谱 2 个模型
-- 🤖 **Agent 友好** - JSON 输出，便于 AI Agent 调用
-- 🛡️ **防重入保护** - Hook 引擎防止死循环
+## 💡 你有没有遇到过这样的问题？
+
+**让 OpenClaw 写代码时，它总是"手写"？**
+
+```
+❌ 之前的做法：
+   
+   你: "帮我写一个 FastAPI 项目"
+   
+   Agent: [直接输出代码文本...]
+   
+   问题：
+   - 代码没有经过专业工具审查
+   - 无法利用 CLI 工具的文件操作能力
+   - 效率低，容易出错
+```
+
+**想过让 Agent 用 Claude Code、Codex、Gemini CLI 这些专业工具？**
+
+```
+❌ 但又有新问题：
+
+   Agent: "我用 Codex 执行了任务..."
+   
+   你: "执行完了？结果呢？"
+   
+   Agent: "我再去问一下..." [轮询中...]
+   
+   问题：
+   - Agent 需要不断轮询工具状态
+   - 效率低，Token 浪费
+   - 多终端同时工作会冲突
+```
+
+**CLI-Switch 就是为解决这些问题而生的！**
+
+---
+
+## ✨ CLI-Switch 做了什么？
+
+```
+✅ 有了 CLI-Switch：
+
+   Agent: cli-switch opus4.6
+   Agent: claude -p "写一个 FastAPI 项目"
+   Agent: [Hook 自动等待完成，无需轮询]
+   Agent: 代码已写好，审查完成！
+   
+   优势：
+   ✓ Agent 一键切换模型
+   ✓ 自动等待 CLI 工具完成
+   ✓ 多 Agent 并发不冲突
+   ✓ 状态可查询、可追溯
+```
+
+---
+
+## 🎯 核心特性
+
+| 特性 | 说明 | 解决的问题 |
+|------|------|-----------|
+| 🔄 **一键切换** | 33+ 模型，一个命令切换 | 不同任务用不同模型 |
+| 🖥️ **多终端隔离** | 每个 TTY 独立状态 | 多 Agent 同时工作不冲突 |
+| 🔒 **并发安全** | 原子写入，防撕裂 | 状态不会互相覆盖 |
+| 🤖 **Agent 友好** | JSON 输出 + Hook 集成 | Agent 自动化调用 |
+| 👻 **幽灵防御** | PID 验证 | 自动清理无效状态 |
+
+---
 
 ## 📦 支持的工具和模型
 
 ### Claude Code (17 个模型)
-| 提供商 | 模型 | 说明 |
-|-------|------|------|
-| 百炼 | `qwen`, `qwen-max`, `qwen-coder`, `qwen-next`, `glm`, `glm47`, `kimi`, `minimax` | 8 个模型 |
-| 智谱 | `glm47-zhipu`, `glm5-zhipu` | 2 个模型 |
-| Fucheers | `opus4.6`, `opus4.6-thinking`, `opus4.5-20251101`, `opus4.5-20251101-thinking`, `sonnet4.6`, `sonnet4.6-thinking`, `haiku4.5-20251001` | 7 个模型 |
 
-### Gemini CLI (7 个模型)
-| 提供商 | 模型 | 说明 |
-|-------|------|------|
-| 智谱 | `glm47-zhipu`, `glm5-zhipu` | 2 个模型 |
-| Google | `gemini-3.1-pro`, `nanobanana`, `imagen-4-ultra`, `gemini-2.5-flash`, `gemini-2.5-pro` | 5 个模型 |
+| 提供商 | 模型 | 适用场景 |
+|-------|------|---------|
+| **Fucheers** | `opus4.6` ⭐ | 写后端/架构代码（首选） |
+| | `opus4.6-thinking` | 需要思考过程的复杂任务 |
+| | `sonnet4.6` | 通用均衡任务 |
+| | `haiku4.5` | 轻量快速任务 |
+| **智谱** | `glm5-zhipu` | Opus 不通时的备选 |
+| | `glm47-zhipu` | 平衡性价比 |
+| **百炼** | `qwen-coder` | 代码专用 |
+| | `qwen-max` | 深度推理 |
+| | `glm`, `glm47`, `kimi`, `minimax` | 其他场景 |
 
 ### Codex CLI (9 个模型)
-| 提供商 | 模型 | 说明 |
-|-------|------|------|
-| 百炼 | `qwen`, `qwen-max`, `qwen-coder`, `qwen-next`, `glm`, `glm47`, `kimi`, `minimax` | 8 个模型 |
-| OpenAI | `gpt-5.2-codex` | 1 个模型 |
+
+| 提供商 | 模型 | 适用场景 |
+|-------|------|---------|
+| **OpenAI** | `gpt-5.2-codex` ⭐ | 代码审查（首选） |
+| **百炼** | `qwen-coder` | 代码审查备选 |
+| | `qwen-max`, `glm`, `kimi` 等 | 其他场景 |
+
+### Gemini CLI (7 个模型)
+
+| 提供商 | 模型 | 适用场景 |
+|-------|------|---------|
+| **Google** | `gemini-3.1-pro` ⭐ | 前端/UI 任务（首选） |
+| | `nanobanana` | 图像生成 |
+| | `imagen-4-ultra` | 高级图像 |
+| **智谱** | `glm5-zhipu`, `glm47-zhipu` | 备选模型 |
+
+---
 
 ## 🚀 快速开始
 
 ### 安装
 
 ```bash
-# 从源码安装
-cd ~/projects/cli-switch
+# 从 GitHub 安装
+git clone https://github.com/anomalyco/cli-switch.git
+cd cli-switch
 pipx install -e .
 
 # 或使用安装脚本
@@ -54,9 +129,9 @@ pipx install -e .
 
 ```bash
 # 切换模型
-cli-switch qwen
+cli-switch opus4.6
 
-# 查看状态
+# 查看当前状态
 cli-switch status
 
 # 列出所有模型
@@ -70,276 +145,208 @@ cli-switch --json status
 
 ```bash
 # Claude Code (默认)
-cli-switch qwen
+cli-switch opus4.6
+claude -p "写代码"
 
-# Gemini CLI
-cli-switch --tool gemini glm5-zhipu
+# Codex CLI (代码审查)
+cli-switch --tool codex gpt-5.2-codex
+codex exec "审查代码"
 
-# Codex CLI
-cli-switch --tool codex qwen-coder
-```
-
-## 🤖 OpenClaw Agent 集成
-
-为您的三个 Agent 提供智能模型切换能力：
-
-### 安装 Agent 配置
-
-```bash
-# 运行安装脚本
-./install.sh
-
-# 三个 Agent 自动配置完成：
-# - Team Lead: ~/.claude/skills/openclaw-teamlead
-# - Codex Reviewer: ~/.claude/skills/openclaw-codex-reviewer
-# - Gemini Reviewer: ~/.claude/skills/openclaw-gemini-reviewer
-```
-
-### Agent 使用示例
-
-#### Team Lead
-```bash
-# 任务开始
-cli-switch qwen
-
-# 分配任务...
-
-# 审查阶段
-cli-switch --tool codex qwen-coder
+# Gemini CLI (前端)
 cli-switch --tool gemini gemini-3.1-pro
-
-# 汇总结果
-cli-switch status
+gemini -p "写前端"
 ```
 
-#### Codex Reviewer
+---
+
+## 🤖 OpenClaw Agent 使用指南
+
+### 推荐工作流
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    OpenClaw Agent 工作流                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  1️⃣ 写代码                                                  │
+│     cli-switch opus4.6                                      │
+│     claude -p "实现用户认证模块"                             │
+│                                                             │
+│  2️⃣ 审查代码                                                │
+│     cli-switch --tool codex gpt-5.2-codex                   │
+│     codex exec "审查安全性、性能、边界条件"                   │
+│                                                             │
+│  3️⃣ 前端/UI                                                 │
+│     cli-switch --tool gemini gemini-3.1-pro                 │
+│     gemini -p "实现登录页面 UI"                              │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Agent 调用示例
+
+```python
+# Agent 获取当前状态
+status = subprocess.run(["cli-switch", "--json", "status"], capture_output=True)
+data = json.loads(status.stdout)
+print(f"当前模型: {data['model_name']}")
+
+# Agent 切换模型
+subprocess.run(["cli-switch", "opus4.6"])
+
+# Agent 调用 Claude Code
+result = subprocess.run(
+    ["claude", "-p", "写一个 FastAPI 项目"],
+    capture_output=True,
+    text=True
+)
+print(result.stdout)
+```
+
+---
+
+## 👤 人类使用：cli-menu
+
+**不喜欢记命令？用 `cli-menu` 交互式菜单！**
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║              AI CLI 工具选择                                  ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  1) Claude Code CLI                                          ║
+║     支持模型：fucheers(7) + 智谱(2) + 百炼(8) = 17 个模型     ║
+║                                                              ║
+║  2) Gemini CLI                                               ║
+║     支持模型：智谱(2) + Google(5) = 7 个模型                  ║
+║                                                              ║
+║  3) Codex CLI                                                ║
+║     支持模型：百炼(8) + OpenAI(1) = 9 个模型                  ║
+║                                                              ║
+║  4) 测试所有模型                                              ║
+║  5) 显示当前状态                                              ║
+║                                                              ║
+║  0) 退出                                                      ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+### 使用方法
+
 ```bash
-# 确保使用 Codex 工具
-cli-switch --tool codex qwen-coder
+# 启动菜单
+cli-menu
 
-# 执行代码审查
-cat code.txt | codex exec "Review for bugs, security, performance"
+# 选择工具 → 选择模型 → 自动启动 CLI
 ```
 
-#### Gemini Reviewer
-```bash
-# 切换到 Gemini 工具
-cli-switch --tool gemini gemini-3.1-pro
+---
 
-# 执行架构审查
-cat architecture.txt | gemini -p "Review architecture and design"
+## 🛡️ 安全特性
+
+### 终端隔离
+
+```
+Terminal 1 (PID 12345) → ~/.local/state/cli-switch/tty-12345.json
+Terminal 2 (PID 67890) → ~/.local/state/cli-switch/tty-67890.json
+
+# 每个 TTY 独立状态，互不干扰
+# 支持 Tmux 多窗口
 ```
 
-详见 [Agent 使用指南](docs/AGENT_GUIDE.md)
+### 并发安全
+
+```
+# 原子写入机制
+写入 → 临时文件 → fsync → rename
+
+# 防止配置撕裂
+# 支持多 Agent 同时调用
+```
+
+### 幽灵防御
+
+```
+# PID 绑定验证
+状态文件记录 PID → 检查进程存活 → 自动清理无效状态
+```
+
+---
+
+## 📊 性能
+
+| 指标 | 数值 |
+|------|------|
+| 切换延迟 | < 100ms |
+| TTY 检测 | < 10ms |
+| 状态读取 | < 5ms |
+| 并发支持 | 100+ 线程 |
+
+---
 
 ## 📚 详细文档
 
-- [📖 文档索引](docs/README.md) - 完整文档导航
-- [Agent 使用指南](docs/AGENT_GUIDE.md) - 三个 Agent 详细使用说明
-- [OpenClaw 集成](docs/OPENCLAW_INTEGRATION.md) - OpenClaw 集成指南
-- [API 文档](docs/API.md) - 完整 API 文档
-- [配置说明](docs/CONFIG.md) - 配置文件说明
-- [MCP 配置](docs/MCP.md) - MCP Server 配置
+| 文档 | 说明 |
+|------|------|
+| [Agent 使用指南](docs/AGENT_GUIDE.md) | 三个 Agent 详细使用说明 |
+| [Agent 规则](docs/AGENT_RULES.md) | Agent 调用规则和最佳实践 |
+| [API 文档](docs/API.md) | 完整 API 文档 |
+| [配置说明](docs/CONFIG.md) | 配置文件说明 |
+| [MCP 配置](docs/MCP.md) | MCP Server 配置 |
+| [OpenClaw 集成](docs/OPENCLAW_INTEGRATION.md) | OpenClaw 集成指南 |
+
+---
 
 ## 🧪 测试
-
-### 运行测试
 
 ```bash
 # 运行所有测试
 pytest tests/
 
-# 运行完整测试套件
-python3 -m pytest tests/ -v
-
 # 测试覆盖
 pytest tests/ --cov=cli_switch
+
+# 结果：50 个测试全部通过
 ```
 
-### 测试结果
+---
 
-```
-✅ 50 个测试全部通过
-- 模型注册表与 YAML 外部化：5 个测试
-- 终端隔离与并发防撕裂：3 个测试
-- Shell 钩子性能：2 个测试
-- Hook 引擎与防重入：2 个测试
-- 其他核心功能：38 个测试
-```
+## 📝 更新日志
 
-详见 [测试报告](tests/TEST_REPORT.md)
+### v1.1.0 (2026-03-13)
+- ✨ 添加 7 个 Fucheers 模型（Opus 4.6、Sonnet 4.6 等）
+- ✨ 添加 MCP Server 管理功能
+- ✨ 添加 Hook 引擎和防重入保护
+- ✨ 添加 `cli-menu` 交互式菜单
+- 🐛 修复幽灵 TTY 防御逻辑
+- 📚 添加完整的 Agent 使用指南
 
-## 🔧 开发
+详见 [更新日志](CHANGELOG.md)
 
-### 环境设置
-
-```bash
-# 克隆仓库
-git clone https://github.com/anomalyco/cli-switch.git
-cd cli-switch
-
-# 安装开发依赖
-pip install -e ".[dev]"
-
-# 运行代码质量检查
-ruff check src/
-mypy src/
-
-# 格式化代码
-black src/
-```
-
-### 项目结构
-
-```
-cli-switch/
-├── src/cli_switch/          # 源代码
-│   ├── models.py            # 模型注册表
-│   ├── switcher.py          # 切换逻辑
-│   ├── session.py           # TTY 状态管理
-│   ├── hooks.py             # Hook 引擎
-│   ├── main.py              # CLI 入口
-│   └── default_models.yaml  # 内置模型配置
-├── tests/                   # 测试文件
-│   ├── test_core.py         # 核心测试
-│   ├── test_comprehensive.py # 完整测试套件
-│   └── test_terminal_isolation.py # 终端隔离测试
-├── docs/                    # 文档
-│   ├── README.md            # 文档索引
-│   ├── AGENT_GUIDE.md       # Agent 使用指南
-│   └── OPENCLAW_INTEGRATION.md # OpenClaw 集成
-├── agent_skills/            # Agent Skills
-│   └── openclaw/
-│       └── skill.json       # OpenClaw Skill 定义
-├── examples/                # 示例
-│   └── integrations/
-│       └── claude-code-hooks.json
-├── SKILL.md                 # Claude Code Skill 定义
-├── install.sh               # 安装脚本
-├── README.md                # 本文件
-└── pyproject.toml           # 项目配置
-```
-
-## 🎯 使用场景
-
-### 场景 1: 多模型协作
-```bash
-# 开发代码
-cli-switch qwen-coder
-# 写代码...
-
-# 代码审查
-cli-switch --tool codex qwen-coder
-# Codex 审查...
-
-# 架构评审
-cli-switch --tool gemini gemini-3.1-pro
-# Gemini 评审...
-```
-
-### 场景 2: 多终端工作
-```bash
-# Terminal 1: Claude Code
-cli-switch qwen
-claude
-
-# Terminal 2: Codex CLI
-cli-switch --tool codex qwen-coder
-codex
-
-# Terminal 3: Gemini CLI
-cli-switch --tool gemini gemini-3.1-pro
-gemini
-```
-
-### 场景 3: Agent 自动化
-```bash
-# Agent 检测环境
-STATUS=$(cli-switch --json status)
-
-# Agent 解析状态
-MODEL=$(echo $STATUS | jq -r '.active_model')
-
-# Agent 智能切换
-cli-switch $APPROPRIATE_MODEL
-```
-
-## 🛡️ 安全特性
-
-### 终端隔离
-- 每个 TTY 独立状态文件
-- 不会互相干扰
-- 支持 Tmux 多窗口
-
-### 并发安全
-- 原子写入（临时文件 + 重命名）
-- 防止配置撕裂
-- 支持多 Agent 并发调用
-
-### 幽灵防御
-- PID 绑定验证
-- 检测进程存活
-- 自动清理无效状态
-
-### 防重入保护
-- 环境变量标志
-- 防止 Hook 死循环
-- 静默退出机制
-
-## 📊 性能
-
-- **切换延迟**: < 100ms
-- **TTY 检测**: < 10ms
-- **状态读取**: < 5ms
-- **并发支持**: 100+ 线程
+---
 
 ## 🤝 贡献
 
 欢迎贡献！请查看 [贡献指南](CONTRIBUTING.md)
 
-### 贡献方式
-- 🐛 提交 Bug 报告
-- 💡 提出新功能建议
-- 📝 改进文档
-- 🔧 提交代码修复
-
-## 📝 更新日志
-
-### v1.1.0 (2026-03-13)
-- ✨ 添加 7 个 Fucheers 模型
-- ✨ 添加 MCP Server 管理功能
-- ✨ 添加 Hook 引擎和防重入保护
-- 🐛 修复幽灵 TTY 防御逻辑
-- 📚 添加完整的 Agent 使用指南
-- 🧪 添加完整测试套件（50 个测试）
-
-详见 [更新日志](CHANGELOG.md)
-
-### v1.0.0 (2026-03-10)
-- 🎉 初始发布
-- ✨ 支持 Claude Code、Gemini CLI、Codex CLI
-- ✨ 多终端隔离
-- ✨ 并发安全
+---
 
 ## 📄 许可证
 
 MIT License - 详见 [LICENSE](LICENSE)
 
-## 👥 作者
-
-**OpenClaw Team**
-
-## 🙏 致谢
-
-- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview)
-- [Codex CLI](https://github.com/openai/codex)
-- [Gemini CLI](https://github.com/google-gemini/gemini-cli)
-- [AI-Pair](https://github.com/axtonliu/ai-pair) - 灵感来源
+---
 
 ## 📮 联系方式
 
-- GitHub Issues: [提交问题](https://github.com/anomalyco/cli-switch/issues)
-- 企业微信：OpenClaw Team 群
+- **GitHub Issues**: [提交问题](https://github.com/anomalyco/cli-switch/issues)
+- **微信**: 扫码加好友交流
+
+<div align="center">
+
+![微信二维码](wechat-qrcode.jpg)
+
+</div>
 
 ---
 
