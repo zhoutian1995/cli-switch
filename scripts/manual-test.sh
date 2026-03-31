@@ -4,9 +4,9 @@
 set -e
 
 # 设置环境变量 (注意: OPENAI_API_KEY 不要覆盖，使用系统中的值)
-export BAILIAN_API_KEY="sk-sp-f44502a7dac14c66ac903c429ca21345"
-export ZHIPU_AUTH_TOKEN="d15c3c036d7f4029a0fa6128c13ae8f8.Er6qlNj3CSVl02y3"
-export ANTHROPIC_AUTH_TOKEN="sk-sP0U7aUfN4ExpAfRv4UO1yUf2ZUeMW5Ffoi5khkJV5lzaeOA"
+export ZHIPU_AUTH_TOKEN="sk-sp-f44502a7dac14c66ac903c429ca21345"
+
+export ANTHROPIC_AUTH_TOKEN="YOUR_API_KEY_HERE"
 # OPENAI_API_KEY 保持系统原有值，不要覆盖
 
 # 激活虚拟环境
