@@ -126,7 +126,7 @@ models:
     name: "Qwen3.5+"
     tool: claude
     model_id: "qwen3.5-plus"
-    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
+    base_url: "https://open.bigmodel.cn/api/anthropic"
     description: "通义千问 3.5 增强版"
 ```
 
@@ -136,8 +136,8 @@ models:
 
 | 变量名 | 说明 |
 |--------|------|
-| `BAILIAN_API_KEY` | 阿里云百炼 API 密钥 |
-| `ZHIPU_API_KEY` | 智谱 API 密钥 |
+| `ZHIPU_AUTH_TOKEN` | 智谱 API 密钥 |
+| `ZHIPU_AUTH_TOKEN` | 智谱 API 密钥 |
 | `FUCHEERS_API_KEY` | Fucheers API 密钥 |
 | `GEMINI_API_KEY` | Google Gemini API 密钥 |
 

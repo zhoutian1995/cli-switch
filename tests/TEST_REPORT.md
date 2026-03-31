@@ -28,16 +28,16 @@
 
 | 工具 | 模型数 | 模型列表 |
 |---|---|---|
-| **Claude Code** | 17 | 百炼 8 个 (qwen, qwen-max, qwen-next, qwen-coder, minimax, glm, glm47, kimi) + 智谱 2 个 (glm47-zhipu, glm5-zhipu) + Fucheers 7 个 (opus4.6, opus4.6-thinking, opus4.5-20251101, opus4.5-20251101-thinking, sonnet4.6, sonnet4.6-thinking, haiku4.5-20251001) |
+| **Claude Code** | 17 | 智谱 8 个 (qwen, qwen-max, qwen-next, qwen-coder, minimax, glm, glm47, kimi) + 智谱 2 个 (glm47-zhipu, glm5-zhipu) + Fucheers 7 个 (opus4.6, opus4.6-thinking, opus4.5-20251101, opus4.5-20251101-thinking, sonnet4.6, sonnet4.6-thinking, haiku4.5-20251001) |
 | **Gemini CLI** | 7 | Google 原生 5 个 (gemini-3.1-pro, nanobanana, imagen-4-ultra, gemini-2.5-flash, gemini-2.5-pro) + 智谱 2 个 (glm47-zhipu, glm5-zhipu) |
-| **Codex CLI** | 9 | 百炼 8 个 (qwen, qwen-max, qwen-next, qwen-coder, minimax, glm, glm47, kimi) + OpenAI 原生 1 个 (gpt-5.2-codex) |
+| **Codex CLI** | 9 | 智谱 8 个 (qwen, qwen-max, qwen-next, qwen-coder, minimax, glm, glm47, kimi) + OpenAI 原生 1 个 (gpt-5.2-codex) |
 
 ### 2.2 API 端点配置
 
 | 平台 | 工具 | API 端点 | 环境变量 |
 |---|---|---|---|
-| **百炼** | Claude Code | `https://coding.dashscope.aliyuncs.com/apps/anthropic` | `BAILIAN_API_KEY` |
-| **百炼** | Codex CLI | `https://coding.dashscope.aliyuncs.com/v1` | `OPENAI_API_KEY` |
+| **智谱** | Claude Code | `https://open.bigmodel.cn/api/anthropic` | `ZHIPU_AUTH_TOKEN` |
+| **智谱** | Codex CLI | `https://open.bigmodel.cn/v1` | `OPENAI_API_KEY` |
 | **智谱** | Claude Code | `https://open.bigmodel.cn/api/anthropic` | `ZHIPU_AUTH_TOKEN` |
 | **智谱** | Gemini CLI | `https://open.bigmodel.cn/api/coding/paas/v4` | `OPENROUTER_API_KEY` |
 | **Fucheers** | Claude Code | `https://www.fucheers.top` | `ANTHROPIC_AUTH_TOKEN` |
@@ -47,7 +47,7 @@
 
 | 模型 | 支持的工具 |
 |---|---|
-| 百炼 8 个 (qwen, qwen-max, qwen-next, qwen-coder, minimax, glm, glm47, kimi) | Claude Code + Codex CLI |
+| 智谱 8 个 (qwen, qwen-max, qwen-next, qwen-coder, minimax, glm, glm47, kimi) | Claude Code + Codex CLI |
 | 智谱 2 个 (glm47-zhipu, glm5-zhipu) | Claude Code + Gemini CLI |
 
 ---
@@ -71,14 +71,14 @@
 
 | 模型 | 来源 | 状态 | 延迟 | 响应 |
 |---|---|---|---|---|
-| qwen | 百炼 | ✅ | 2.4s | 我是 Qwen3.5，阿里巴巴推出的大语言模型。 |
-| qwen-max | 百炼 | ✅ | 1.2s | 我是通义千问（Qwen）... |
-| qwen-next | 百炼 | ✅ | 15.3s | 我是Qwen3... |
-| qwen-coder | 百炼 | ✅ | 1.2s | 我是通义千问... |
-| minimax | 百炼 | ✅ | 3.5s | 我是MiniMax-M2.5模型。 |
-| glm | 百炼 | ✅ | 5.6s | 我是GLM... |
-| glm47 | 百炼 | ✅ | 1.9s | 我是GLM，一个由Z.ai训练的大语言模型。 |
-| kimi | 百炼 | ✅ | 0.9s | Kimi。由月之暗面开发。 |
+| qwen | 智谱 | ✅ | 2.4s | 我是 Qwen3.5，阿里巴巴推出的大语言模型。 |
+| qwen-max | 智谱 | ✅ | 1.2s | 我是通义千问（Qwen）... |
+| qwen-next | 智谱 | ✅ | 15.3s | 我是Qwen3... |
+| qwen-coder | 智谱 | ✅ | 1.2s | 我是通义千问... |
+| minimax | 智谱 | ✅ | 3.5s | 我是MiniMax-M2.5模型。 |
+| glm | 智谱 | ✅ | 5.6s | 我是GLM... |
+| glm47 | 智谱 | ✅ | 1.9s | 我是GLM，一个由Z.ai训练的大语言模型。 |
+| kimi | 智谱 | ✅ | 0.9s | Kimi。由月之暗面开发。 |
 | glm47-zhipu | 智谱 | ✅ | 0.8s | 我是Z.ai训练的GLM大语言模型。 |
 | glm5-zhipu | 智谱 | ✅ | 2.2s | 我是一个由Z.ai训练的GLM大语言模型... |
 | opus4.6 | Fucheers | ✅ | 2.5s | 我是 Claude，由 Anthropic 开发的 AI 助手。 |
@@ -106,16 +106,16 @@
 | 模型 | 来源 | 状态 | 延迟 | 响应 |
 |---|---|---|---|---|
 | gpt-5.2-codex | OpenAI | ✅ | 2.7s | 我是 OpenAI 的 ChatGPT 模型。 |
-| qwen | 百炼 | ⏳ | - | 需配置 OPENAI_API_KEY |
-| qwen-max | 百炼 | ⏳ | - | 需配置 OPENAI_API_KEY |
-| qwen-next | 百炼 | ⏳ | - | 需配置 OPENAI_API_KEY |
-| qwen-coder | 百炼 | ⏳ | - | 需配置 OPENAI_API_KEY |
-| minimax | 百炼 | ⏳ | - | 需配置 OPENAI_API_KEY |
-| glm | 百炼 | ⏳ | - | 需配置 OPENAI_API_KEY |
-| glm47 | 百炼 | ⏳ | - | 需配置 OPENAI_API_KEY |
-| kimi | 百炼 | ⏳ | - | 需配置 OPENAI_API_KEY |
+| qwen | 智谱 | ⏳ | - | 需配置 OPENAI_API_KEY |
+| qwen-max | 智谱 | ⏳ | - | 需配置 OPENAI_API_KEY |
+| qwen-next | 智谱 | ⏳ | - | 需配置 OPENAI_API_KEY |
+| qwen-coder | 智谱 | ⏳ | - | 需配置 OPENAI_API_KEY |
+| minimax | 智谱 | ⏳ | - | 需配置 OPENAI_API_KEY |
+| glm | 智谱 | ⏳ | - | 需配置 OPENAI_API_KEY |
+| glm47 | 智谱 | ⏳ | - | 需配置 OPENAI_API_KEY |
+| kimi | 智谱 | ⏳ | - | 需配置 OPENAI_API_KEY |
 
-> 注: 百炼模型通过 Codex CLI 使用需要配置 `OPENAI_API_KEY`（使用百炼 API Key）
+> 注: 智谱模型通过 Codex CLI 使用需要配置 `OPENAI_API_KEY`（使用智谱 API Key）
 
 ---
 
@@ -141,11 +141,11 @@
 ### 5.1 环境变量配置
 
 ```bash
-# 百炼 (Claude Code)
-export BAILIAN_API_KEY="your_bailian_api_key"
+# 智谱 (Claude Code)
+export ZHIPU_AUTH_TOKEN="your_zhipu_api_key"
 
-# 百炼 (Codex CLI) - 使用同一个 Key
-export OPENAI_API_KEY="your_bailian_api_key"
+# 智谱 (Codex CLI) - 使用同一个 Key
+export OPENAI_API_KEY="your_zhipu_api_key"
 
 # 智谱 (Claude Code)
 export ZHIPU_AUTH_TOKEN="your_zhipu_api_key"
@@ -170,7 +170,7 @@ model = "qwen3.5-plus"
 
 [model_providers.Model_Studio_Coding_Plan]
 name = "Model_Studio_Coding_Plan"
-base_url = "https://coding.dashscope.aliyuncs.com/v1"
+base_url = "https://open.bigmodel.cn/v1"
 env_key = "OPENAI_API_KEY"
 wire_api = "chat"
 ```

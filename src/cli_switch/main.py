@@ -82,6 +82,9 @@ Hook 命令:
   hook config remove <type> <cmd> 移除 hook
   hook config clear <type>        清空指定类型的 hooks
 
+验证命令:
+  validate                        验证配置完整性（检查PATH、key唯一性、provider非空）
+
 选项:
   --version, -v    显示版本号
   --help, -h       显示帮助
@@ -249,6 +252,8 @@ def _main_inner(argv: Optional[list] = None, json_output: bool = False):
         handle_mcp(cmd_args, json_output)
     elif cmd == "hook":
         handle_hook(cmd_args, json_output, custom_hook)
+    elif cmd == "validate":
+        handle_validate(registry, json_output)
     elif cmd == "health-check":
         model_key = cmd_args[0] if cmd_args and not cmd_args[0].startswith("-") else None
         handle_health_check(model_key, registry, json_output)
@@ -956,6 +961,33 @@ def handle_config(action: str, config: Config):
     elif action == "edit":
         editor = os.getenv("EDITOR", "vim")
         subprocess.run([editor, str(config.config_path)])
+
+
+def handle_validate(registry, json_output: bool = False):
+    """处理 validate 命令 - 验证配置完整性"""
+    from .validator import validate_config, format_report
+
+    tools = registry._models
+    issues = validate_config(tools)
+
+    if json_output:
+        import json
+        result = {
+            "success": len([i for i in issues if i.level == "error"]) == 0,
+            "errors": len([i for i in issues if i.level == "error"]),
+            "warnings": len([i for i in issues if i.level == "warning"]),
+            "issues": [
+                {"level": i.level, "rule": i.rule, "message": i.message, "suggestion": i.suggestion}
+                for i in issues
+            ]
+        }
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print(format_report(issues))
+
+    # 有 error 级别问题时返回非零退出码
+    if any(i.level == "error" for i in issues):
+        sys.exit(1)
 
 
 def handle_hook(args: list, json_output: bool = False, custom_hook: Optional[str] = None):

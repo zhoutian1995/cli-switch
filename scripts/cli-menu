@@ -97,28 +97,32 @@ TOOLS = {
 
 def validate_config():
     """启动时验证配置完整性，发现问题提前报错"""
-    errors = []
-    for tool_key, tool in TOOLS.items():
-        # 检查必要字段
-        if "name" not in tool:
-            errors.append(f"工具 '{tool_key}' 缺少 'name' 字段")
-        if "command" not in tool:
-            errors.append(f"工具 '{tool_key}' 缺少 'command' 字段")
-        if "models" not in tool:
-            errors.append(f"工具 '{tool_key}' 缺少 'models' 字段")
-            continue
-        # 检查 command 是否可用
-        cmd = tool["command"].split()[0]
-        if not shutil.which(cmd):
-            errors.append(f"工具 '{tool_key}' 的命令 '{cmd}' 不在 PATH 中")
-        # 检查模型 key 唯一性
-        all_keys = []
-        for provider in tool["models"].values():
-            for model in provider.get("models", []):
-                if model["key"] in all_keys:
-                    errors.append(f"工具 '{tool_key}' 中模型 key '{model['key']}' 重复")
-                all_keys.append(model["key"])
-    return errors
+    # 尝试使用 cli-switch 的 validator 模块
+    try:
+        from cli_switch.validator import validate_config as _validate, format_report
+        issues = _validate(TOOLS)
+        return [str(i) for i in issues]
+    except ImportError:
+        # fallback: 内联验证
+        errors = []
+        for tool_key, tool in TOOLS.items():
+            if "name" not in tool:
+                errors.append(f"工具 '{tool_key}' 缺少 'name' 字段")
+            if "command" not in tool:
+                errors.append(f"工具 '{tool_key}' 缺少 'command' 字段")
+            if "models" not in tool:
+                errors.append(f"工具 '{tool_key}' 缺少 'models' 字段")
+                continue
+            cmd = tool["command"].split()[0]
+            if not shutil.which(cmd):
+                errors.append(f"工具 '{tool_key}' 的命令 '{cmd}' 不在 PATH 中")
+            all_keys = []
+            for provider in tool["models"].values():
+                for model in provider.get("models", []):
+                    if model["key"] in all_keys:
+                        errors.append(f"工具 '{tool_key}' 中模型 key '{model['key']}' 重复")
+                    all_keys.append(model["key"])
+        return errors
 
 def clear_screen():
     """清屏"""

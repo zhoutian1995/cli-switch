@@ -341,7 +341,7 @@ echo $ANTHROPIC_BASE_URL
 cat ~/.claude/settings.json
 
 # 检查API密钥
-env | grep -E "BAILIAN_API_KEY|ZHIPU_AUTH_TOKEN"
+env | grep -E "ZHIPU_AUTH_TOKEN"
 
 # 重新切换
 cli-switch qwen

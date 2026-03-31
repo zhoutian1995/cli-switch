@@ -42,14 +42,14 @@ from cli_switch import Model, ToolType
 
 # 创建模型
 model = Model(
-    key="qwen",
-    name="Qwen3.5+",
+    key="glm5-zhipu",
+    name="GLM-5",
     tool=ToolType.CLAUDE,
-    model_id="qwen3.5-plus",
-    description="通义千问 3.5 增强版",
-    base_url="https://coding.dashscope.aliyuncs.com/apps/anthropic",
-    api_key_env="BAILIAN_API_KEY",
-    tags=["bailian", "recommended"]
+    model_id="glm-5",
+    description="智谱 GLM-5 大语言模型",
+    base_url="https://open.bigmodel.cn/api/anthropic",
+    api_key_env="ZHIPU_AUTH_TOKEN",
+    tags=["zhipu", "recommended"]
 )
 
 # 转换为字典

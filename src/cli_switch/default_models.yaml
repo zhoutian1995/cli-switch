@@ -2,121 +2,90 @@
 # 用户自定义模型请写入 ~/.cli-switch/custom_models.yaml（相同 key 会覆盖此文件）
 
 models:
-  # === 百炼模型 (8 个) - 支持 Claude Code / Codex CLI ===
-  # Codex 须使用 0.80.0 版本（wire_api="chat"），最新版不支持 Coding Plan
-  qwen:
-    name: "Qwen3.5+"
-    tool: claude
-    model_id: "qwen3.5-plus"
-    description: "通义千问 3.5 增强版"
-    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
-    api_key_env: "BAILIAN_API_KEY"
-    tags: [bailian, recommended]
-    supported_tools: [claude, codex]
-    codex_model_id: "qwen3.5-plus"
+  # === 智谱 GLM 模型 - 支持 Claude Code / Gemini CLI ===
+  # Gemini CLI 需要使用定制版，通过 OPENROUTER_BASE_URL 配置
+  # API: https://open.bigmodel.cn/api/anthropic (Anthropic 兼容)
+  # API Key: ZHIPU_AUTH_TOKEN (智谱开放平台 API Key)
+  # 套餐: GLM Coding Plan (Lite/Pro/Max)
 
-  qwen-max:
-    name: "Qwen3 Max"
+  glm-5.1:
+    name: "GLM-5.1"
     tool: claude
-    model_id: "qwen3-max-2026-01-23"
-    description: "通义千问 3 Max 版 (2026-01-23 版本)"
-    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
-    api_key_env: "BAILIAN_API_KEY"
-    tags: [bailian]
-    supported_tools: [claude, codex]
-    codex_model_id: "qwen3-max-2026-01-23"
+    model_id: "glm-5.1"
+    description: "最强推理模型 (Coding Plan)"
+    base_url: "https://open.bigmodel.cn/api/anthropic"
+    api_key_env: "ZHIPU_AUTH_TOKEN"
+    tags: [zhipu, recommended, thinking]
+    supported_tools: [claude, gemini]
+    gemini_model_id: "glm-5.1"
 
-  qwen-next:
-    name: "Qwen Coder Next"
+  glm-5-turbo:
+    name: "GLM-5-Turbo"
     tool: claude
-    model_id: "qwen3-coder-next"
-    description: "通义千问 3 Coder 下一代版"
-    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
-    api_key_env: "BAILIAN_API_KEY"
-    tags: [bailian, code]
-    supported_tools: [claude, codex]
-    codex_model_id: "qwen3-coder-next"
+    model_id: "glm-5-turbo"
+    description: "高性能推理模型 (Coding Plan)"
+    base_url: "https://open.bigmodel.cn/api/anthropic"
+    api_key_env: "ZHIPU_AUTH_TOKEN"
+    tags: [zhipu, thinking]
+    supported_tools: [claude, gemini]
+    gemini_model_id: "glm-5-turbo"
 
-  qwen-coder:
-    name: "Qwen Coder+"
-    tool: claude
-    model_id: "qwen3-coder-plus"
-    description: "通义千问 3 Coder 增强版"
-    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
-    api_key_env: "BAILIAN_API_KEY"
-    tags: [bailian, code]
-    supported_tools: [claude, codex]
-    codex_model_id: "qwen3-coder-plus"
-
-  minimax:
-    name: "MiniMax M2.5"
-    tool: claude
-    model_id: "MiniMax-M2.5"
-    description: "一般"
-    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
-    api_key_env: "BAILIAN_API_KEY"
-    tags: [bailian]
-    supported_tools: [claude, codex]
-    codex_model_id: "MiniMax-M2.5"
-
-  glm:
-    name: "GLM-5 (百炼)"
+  glm-5:
+    name: "GLM-5"
     tool: claude
     model_id: "glm-5"
-    description: "代码专用"
-    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
-    api_key_env: "BAILIAN_API_KEY"
-    tags: [bailian, code]
-    supported_tools: [claude, codex]
-    codex_model_id: "glm-5"
+    description: "代码专用 (Coding Plan)"
+    base_url: "https://open.bigmodel.cn/api/anthropic"
+    api_key_env: "ZHIPU_AUTH_TOKEN"
+    tags: [zhipu, code]
+    supported_tools: [claude, gemini]
+    gemini_model_id: "glm-5"
 
-  glm47:
-    name: "GLM-4.7 (百炼)"
-    tool: claude
-    model_id: "glm-4.7"
-    description: "代码模型"
-    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
-    api_key_env: "BAILIAN_API_KEY"
-    tags: [bailian, code]
-    supported_tools: [claude, codex]
-    codex_model_id: "glm-4.7"
-
-  kimi:
-    name: "Kimi K2.5"
-    tool: claude
-    model_id: "kimi-k2.5"
-    description: "一般"
-    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
-    api_key_env: "BAILIAN_API_KEY"
-    tags: [bailian]
-    supported_tools: [claude, codex]
-    codex_model_id: "kimi-k2.5"
-
-  # === 智谱模型 (2 个) - 支持 Claude Code / Gemini CLI ===
-  # Gemini CLI 需要使用定制版，通过 OPENROUTER_BASE_URL 配置
-  glm47-zhipu:
+  glm-4.7:
     name: "GLM-4.7"
     tool: claude
     model_id: "glm-4.7"
-    description: "平衡"
+    description: "平衡 (Coding Plan)"
     base_url: "https://open.bigmodel.cn/api/anthropic"
     api_key_env: "ZHIPU_AUTH_TOKEN"
     tags: [zhipu]
     supported_tools: [claude, gemini]
     gemini_model_id: "glm-4.7"
 
-  glm5-zhipu:
-    name: "智谱 GLM-5"
+  glm-4.6:
+    name: "GLM-4.6"
     tool: claude
-    model_id: "glm-5"
-    description: "最强"
+    model_id: "glm-4.6"
+    description: "推理模型 (Coding Plan)"
     base_url: "https://open.bigmodel.cn/api/anthropic"
     api_key_env: "ZHIPU_AUTH_TOKEN"
     tags: [zhipu]
     supported_tools: [claude, gemini]
-    gemini_model_id: "glm-5"
+    gemini_model_id: "glm-4.6"
 
-  # === Fucheers 模型增强版 ===
+  glm-4.5:
+    name: "GLM-4.5"
+    tool: claude
+    model_id: "glm-4.5"
+    description: "推理模型 (Coding Plan)"
+    base_url: "https://open.bigmodel.cn/api/anthropic"
+    api_key_env: "ZHIPU_AUTH_TOKEN"
+    tags: [zhipu]
+    supported_tools: [claude, gemini]
+    gemini_model_id: "glm-4.5"
+
+  glm-4.5-air:
+    name: "GLM-4.5-Air"
+    tool: claude
+    model_id: "glm-4.5-air"
+    description: "轻量推理模型 (Coding Plan)"
+    base_url: "https://open.bigmodel.cn/api/anthropic"
+    api_key_env: "ZHIPU_AUTH_TOKEN"
+    tags: [zhipu, fast]
+    supported_tools: [claude, gemini]
+    gemini_model_id: "glm-4.5-air"
+
+  # === Fucheers Claude 模型 ===
   opus4.6:
     name: "Opus 4.6"
     tool: claude
@@ -187,7 +156,7 @@ models:
     tags: [fucheers, fast]
     supported_tools: [claude]
 
-  # === Gemini CLI 原生模型 (4 个) - 仅支持 Gemini CLI ===
+  # === Gemini CLI 原生模型 - 仅支持 Gemini CLI ===
   gemini-3.1-pro:
     name: "Gemini 3.1 Pro"
     tool: gemini
@@ -236,7 +205,7 @@ models:
     tags: [google]
     supported_tools: [gemini]
 
-  # === Codex CLI 原生模型 (1 个) - 通过 aiclaude.xyz 代理 ===
+  # === Codex CLI 原生模型 ===
   gpt-5.2-codex:
     name: "GPT-5.2 Codex"
     tool: codex
@@ -247,17 +216,64 @@ models:
     tags: [openai]
     supported_tools: [codex]
 
-  # === MCP Servers (Model Context Protocol) ===
-  # 智谱视觉 MCP (用于 Claude Code)
-  zhi-mcp-server:
-    name: "智谱视觉 MCP"
-    description: "通过 MCP 传输 Claude 的视觉能力到智谱 API"
+  # === MCP Servers (Model Context Protocol) - GLM Coding Plan 专属 ===
+  # 环境变量: ZHIPU_AUTH_TOKEN = 智谱 API Key
+  # 额度说明:
+  #   Lite: 联网搜索/网页读取/开源仓库 MCP 每月合计 100 次
+  #   Pro:  联网搜索/网页读取/开源仓库 MCP 每月合计 1000 次
+  #   Max:  联网搜索/网页读取/开源仓库 MCP 每月合计 4000 次
+  #   视觉理解 MCP: 所有套餐共享 5 小时最大 prompt 资源池
+
+  # 视觉理解 MCP - 图像分析、视频理解、UI 截图转代码、OCR 等
+  zai-mcp-server:
+    name: "智谱视觉理解 MCP"
+    description: "GLM-4.6V 视觉能力：图像分析、视频理解、UI 截图转代码、OCR 文字提取、错误截图诊断、技术图表理解、数据可视化分析、UI 差异对比"
     mcp_type: "server"
     enabled: false
     server_config:
-      binary: "zhipu-vision-mcp-server"
-      port_range: [8450, 8550]
-      api_key_env: "ZHIPU_AUTH_TOKEN"
-    mcp_endpoints:
-      - "/vision"
-    supported_tools: [claude]
+      type: "stdio"
+      command: "npx"
+      args: ["-y", "@z_ai/mcp-server@latest"]
+      env:
+        Z_AI_API_KEY: "your_api_key"
+        Z_AI_MODE: "ZHIPU"
+    supported_tools: [claude, codex, cursor, cline, opencode]
+
+  # 联网搜索 MCP - 网络搜索、实时信息获取
+  web-search:
+    name: "联网搜索 MCP"
+    description: "网络搜索、实时信息获取（新闻、股价、天气等）"
+    mcp_type: "remote"
+    enabled: false
+    server_config:
+      type: "http"
+      url: "https://open.bigmodel.cn/api/mcp/web_search_prime/mcp"
+      headers:
+        Authorization: "Bearer your_api_key"
+    supported_tools: [claude, codex, cursor, cline, opencode]
+
+  # 网页读取 MCP - 网页内容抓取、结构化数据提取
+  web-reader:
+    name: "网页读取 MCP"
+    description: "网页内容抓取、结构化数据提取（标题、正文、元数据、链接列表）"
+    mcp_type: "remote"
+    enabled: false
+    server_config:
+      type: "http"
+      url: "https://open.bigmodel.cn/api/mcp/web_reader/mcp"
+      headers:
+        Authorization: "Bearer your_api_key"
+    supported_tools: [claude, codex, cursor, cline, opencode]
+
+  # 开源仓库 MCP - GitHub 仓库搜索、目录结构、代码读取
+  zread:
+    name: "开源仓库 MCP"
+    description: "GitHub 仓库知识文档与代码访问（基于 zread.ai）：仓库搜索、目录结构、代码读取"
+    mcp_type: "remote"
+    enabled: false
+    server_config:
+      type: "http"
+      url: "https://open.bigmodel.cn/api/mcp/zread/mcp"
+      headers:
+        Authorization: "Bearer your_api_key"
+    supported_tools: [claude, codex, cursor, cline, opencode]

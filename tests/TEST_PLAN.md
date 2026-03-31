@@ -220,8 +220,7 @@ jobs:
 
 ```bash
 # 必需
-export BAILIAN_API_KEY="your_key"
-export ZHIPU_AUTH_TOKEN="your_token"
+export ZHIPU_AUTH_TOKEN="your_key"
 export GEMINI_API_KEY="your_key"
 export OPENAI_API_KEY="your_key"
 export ANTHROPIC_API_KEY="your_key"
@@ -264,7 +263,7 @@ def mock_api_response():
 
 使用专用测试模型或 API 的 sandbox 环境避免产生费用：
 
-- 百炼: 使用测试 API key（配额受限）
+- 智谱: 使用测试 API key（配额受限）
 - 智谱: 使用 sandbox endpoint
 - Gemini: 使用免费层级
 - OpenAI: 使用测试项目

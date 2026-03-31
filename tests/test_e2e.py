@@ -15,9 +15,9 @@ def run_cmd(cmd):
     return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
 
 
-def test_switch_to_bailian_glm():
-    """测试切换到百炼GLM-5"""
-    print("测试: 切换到百炼GLM-5 (glm)")
+def test_switch_to_glm5():
+    """测试切换到GLM-5"""
+    print("测试: 切换到GLM-5 (glm)")
     success, stdout, stderr = run_cmd("cli-switch glm")
     if not success:
         print(f"  ❌ 失败: {stderr}")
@@ -31,7 +31,7 @@ def test_switch_to_bailian_glm():
     model = config.get("env", {}).get("ANTHROPIC_MODEL")
     base_url = config.get("env", {}).get("ANTHROPIC_BASE_URL")
 
-    if model == "glm-5" and "dashscope.aliyuncs.com" in base_url:
+    if model == "glm-5" and "open.bigmodel.cn" in base_url:
         print(f"  ✅ 成功: model={model}, base_url正确")
         return True
     else:
@@ -138,7 +138,7 @@ def main():
 
     tests = [
         ("列出模型", test_list_models),
-        ("切换百炼GLM-5", test_switch_to_bailian_glm),
+        ("切换GLM-5", test_switch_to_glm5),
         ("切换智谱GLM-5", test_switch_to_zhipu_glm5),
         ("状态查询", test_status),
         ("自定义模型管理", test_model_add_remove),

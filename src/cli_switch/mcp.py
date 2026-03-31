@@ -66,7 +66,7 @@ class MCPManager:
         "env": {"Z_AI_API_KEY": "your_api_key", "Z_AI_MODE": "ZHIPU"},
     }
 
-    # MCP 工具描述
+    # MCP 工具描述 (GLM Coding Plan 专属 MCP)
     MCP_TOOLS = {
         "zai-mcp-server": {
             "ui_to_artifact": "UI 截图转代码/提示词/设计规范",
@@ -79,11 +79,23 @@ class MCPManager:
             "video_analysis": "视频分析",
         },
         "web-search": {
-            "search": "网页搜索",
+            "webSearchPrime": "联网搜索 - 网络搜索、实时信息获取",
         },
         "web-reader": {
-            "read": "网页读取",
+            "webReader": "网页读取 - 网页内容抓取、结构化数据提取",
         },
+        "zread": {
+            "search_doc": "开源仓库搜索 - GitHub 仓库知识文档检索",
+            "get_repo_structure": "获取仓库目录结构和文件列表",
+            "read_file": "读取 GitHub 仓库中指定文件的代码内容",
+        },
+    }
+
+    # MCP Server 远程地址 (GLM Coding Plan)
+    MCP_SERVER_URLS = {
+        "web-search": "https://open.bigmodel.cn/api/mcp/web_search_prime/mcp",
+        "web-reader": "https://open.bigmodel.cn/api/mcp/web_reader/mcp",
+        "zread": "https://open.bigmodel.cn/api/mcp/zread/mcp",
     }
 
     def __init__(self):
@@ -180,38 +192,86 @@ class MCPManager:
         return self.add_server("zai-mcp-server", config)
 
     def enable_web_search(self) -> Tuple[bool, str]:
-        """启用 web-search MCP 权限"""
-        try:
-            settings = self._load_json(self.settings_local_path)
-
-            if "permissions" not in settings:
-                settings["permissions"] = {}
-
-            # 添加 web-search 权限
-            settings["permissions"]["https://mcp.z.ai/web-search"] = {"enabled": True}
-
-            self._save_json(self.settings_local_path, settings)
-            return True, "已启用 web-search MCP 权限"
-
-        except Exception as e:
-            return False, f"启用失败：{e}"
+        """启用 web-search MCP (联网搜索)"""
+        config = {
+            "type": "http",
+            "url": self.MCP_SERVER_URLS["web-search"],
+            "headers": {},
+        }
+        api_key = os.getenv("ZHIPU_AUTH_TOKEN")
+        if api_key:
+            config["headers"]["Authorization"] = f"Bearer {api_key}"
+        return self.add_server("web-search", config)
 
     def enable_web_reader(self) -> Tuple[bool, str]:
-        """启用 web-reader MCP 权限"""
-        try:
-            settings = self._load_json(self.settings_local_path)
+        """启用 web-reader MCP (网页读取)"""
+        config = {
+            "type": "http",
+            "url": self.MCP_SERVER_URLS["web-reader"],
+            "headers": {},
+        }
+        api_key = os.getenv("ZHIPU_AUTH_TOKEN")
+        if api_key:
+            config["headers"]["Authorization"] = f"Bearer {api_key}"
+        return self.add_server("web-reader", config)
 
-            if "permissions" not in settings:
-                settings["permissions"] = {}
+    def enable_zread(self) -> Tuple[bool, str]:
+        """启用 zread MCP (开源仓库)"""
+        config = {
+            "type": "http",
+            "url": self.MCP_SERVER_URLS["zread"],
+            "headers": {},
+        }
+        api_key = os.getenv("ZHIPU_AUTH_TOKEN")
+        if api_key:
+            config["headers"]["Authorization"] = f"Bearer {api_key}"
+        return self.add_server("zread", config)
 
-            # 添加 web-reader 权限
-            settings["permissions"]["https://mcp.z.ai/web-reader"] = {"enabled": True}
+    def install_all_zai_mcps(self, api_key: Optional[str] = None) -> Tuple[bool, str]:
+        """一键安装所有 GLM Coding Plan MCP (视觉理解 + 联网搜索 + 网页读取 + 开源仓库)"""
+        results = []
+        key = api_key or os.getenv("ZHIPU_AUTH_TOKEN", "your_api_key")
 
-            self._save_json(self.settings_local_path, settings)
-            return True, "已启用 web-reader MCP 权限"
+        # 1. 视觉理解 MCP (stdio)
+        vision_config = copy.deepcopy(self.ZAI_MCP_SERVER)
+        vision_config["env"]["Z_AI_API_KEY"] = key
+        ok, msg = self.add_server("zai-mcp-server", vision_config)
+        results.append(f"  视觉理解: {msg}")
 
-        except Exception as e:
-            return False, f"启用失败：{e}"
+        # 2. 联网搜索 MCP (http)
+        ok, msg = self.add_server(
+            "web-search",
+            {
+                "type": "http",
+                "url": self.MCP_SERVER_URLS["web-search"],
+                "headers": {"Authorization": f"Bearer {key}"},
+            },
+        )
+        results.append(f"  联网搜索: {msg}")
+
+        # 3. 网页读取 MCP (http)
+        ok, msg = self.add_server(
+            "web-reader",
+            {
+                "type": "http",
+                "url": self.MCP_SERVER_URLS["web-reader"],
+                "headers": {"Authorization": f"Bearer {key}"},
+            },
+        )
+        results.append(f"  网页读取: {msg}")
+
+        # 4. 开源仓库 MCP (http)
+        ok, msg = self.add_server(
+            "zread",
+            {
+                "type": "http",
+                "url": self.MCP_SERVER_URLS["zread"],
+                "headers": {"Authorization": f"Bearer {key}"},
+            },
+        )
+        results.append(f"  开源仓库: {msg}")
+
+        return True, "已安装所有 GLM Coding Plan MCP:\n" + "\n".join(results)
 
     def get_tools(self, server_name: str) -> Dict[str, str]:
         """获取 MCP Server 提供的工具列表"""

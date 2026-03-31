@@ -173,14 +173,14 @@ class Switcher:
                 # 获取模型 ID
                 model_id = getattr(model, "codex_model_id", None) or model.model_id
 
-                # 判断是 Coding Plan 模型还是 OpenAI 原生模型
-                is_coding_plan = model.base_url and "dashscope.aliyuncs.com" in model.base_url
+                # 判断是智谱 Coding Plan 模型还是其他自定义模型
+                is_zhipu_coding_plan = model.base_url and "open.bigmodel.cn" in model.base_url
 
-                if is_coding_plan:
-                    # Coding Plan 模型配置
-                    provider_name = "Model_Studio_Coding_Plan"
-                    base_url = "https://coding.dashscope.aliyuncs.com/v1"
-                    env_key = "BAILIAN_API_KEY"  # Coding Plan 使用 BAILIAN_API_KEY 环境变量
+                if is_zhipu_coding_plan:
+                    # 智谱 Coding Plan 模型配置
+                    provider_name = "Zhipu_Coding_Plan"
+                    base_url = model.base_url
+                    env_key = "ZHIPU_AUTH_TOKEN"
 
                     # 检查是否已有 model_providers 配置
                     if f"[model_providers.{provider_name}]" not in content:

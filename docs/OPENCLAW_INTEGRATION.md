@@ -109,7 +109,6 @@ gemini
 
 ### 1. 认证配置
 确保已配置API密钥：
-- `BAILIAN_API_KEY` - 百炼模型
 - `ZHIPU_AUTH_TOKEN` - 智谱模型
 - `ANTHROPIC_API_KEY` - Fucheers模型
 

@@ -32,14 +32,14 @@ metadata:
 | 优先级 | 模型 | 命令 | 场景 |
 |-------|------|------|------|
 | 1 | opus4.6 | `cli-switch opus4.6` | 写后端代码专用 |
-| 2 | 百炼glm-5 | `cli-switch glm` | 代码专用 |
+| 2 | 智谱glm-5 | `cli-switch glm` | 代码专用 |
 | 3 | 智谱glm-5 | `cli-switch glm5-zhipu` | 备选 |
 
 ### 代码审查 (Codex CLI)
 | 优先级 | 模型 | 命令 | 场景 |
 |-------|------|------|------|
 | 1 | gpt-5.2-codex | `cli-switch --tool codex gpt-5.2-codex` | 深度搜索 |
-| 2 | 百炼glm-5 | `cli-switch --tool codex glm` | 代码审查 |
+| 2 | 智谱glm-5 | `cli-switch --tool codex glm` | 代码审查 |
 
 ### 前端/架构 (Gemini CLI)
 | 优先级 | 模型 | 命令 | 场景 |
@@ -242,7 +242,7 @@ notify-user "审查完成"
 
 1. 模型铁律
    ✅ 首选：gpt-5.2-codex (深度搜索)
-   ✅ 备选：百炼glm-5 (代码审查)
+   ✅ 备选：智谱glm-5 (代码审查)
    
 2. 防卡死铁律
    ⚠️ 文件读取设置超时：10秒
@@ -544,7 +544,7 @@ health_check() {
   fi
   
   # 3. 检查API密钥
-  if [ -z "$BAILIAN_API_KEY" ] && [ -z "$ZHIPU_AUTH_TOKEN" ]; then
+  if [ -z "$ZHIPU_AUTH_TOKEN" ] && [ -z "$ZHIPU_AUTH_TOKEN" ]; then
     notify-wechat "⚠️ API密钥未配置"
     return 1
   fi
@@ -567,7 +567,7 @@ recover_from_error() {
     "api_timeout")
       echo "尝试恢复API连接"
       # 检查网络
-      ping -c 1 coding.dashscope.aliyuncs.com || {
+      ping -c 1 open.bigmodel.cn || {
         notify-wechat "❌ 网络不通"
         return 1
       }
@@ -694,7 +694,7 @@ cli-switch glm
 env | grep API_KEY
 
 # 检查网络
-ping coding.dashscope.aliyuncs.com
+ping open.bigmodel.cn
 
 # 降级到备选模型
 cli-switch qwen

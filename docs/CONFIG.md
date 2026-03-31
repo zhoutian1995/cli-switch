@@ -46,14 +46,14 @@ log:
 
 ```yaml
 models:
-  qwen:
-    name: "Qwen3.5+"
+  glm5-zhipu:
+    name: "GLM-5"
     tool: claude
-    model_id: "qwen3.5-plus"
-    base_url: "https://coding.dashscope.aliyuncs.com/apps/anthropic"
-    api_key_env: "BAILIAN_API_KEY"
-    description: "通义千问 3.5 增强版"
-    tags: ["bailian", "recommended"]
+    model_id: "glm-5"
+    base_url: "https://open.bigmodel.cn/api/anthropic"
+    api_key_env: "ZHIPU_AUTH_TOKEN"
+    description: "智谱 GLM-5 大语言模型"
+    tags: ["zhipu", "recommended"]
 ```
 
 #### 模型配置字段
