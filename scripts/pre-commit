@@ -1,0 +1,39 @@
+#!/bin/bash
+# Pre-commit Hook - 自动检查代码质量
+# 防止不符合规范的代码提交
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+echo ""
+
+# 1. Ruff lint 检查（自动修复）
+echo "  → Running ruff..."
+if command -v ruff &> /dev/null; then
+    ruff check src/ tests/ --fix
+    echo "    ✅ ruff passed"
+else
+    echo "    ⚠️  ruff not installed, skipping"
+fi
+
+# 2. Black 格式检查
+echo "  → Running black..."
+if command -v black &> /dev/null; then
+    black --check src/ tests/
+    echo "    ✅ black passed"
+else
+    echo "    ⚠️  black not installed, skipping"
+fi
+
+# 3. 运行测试
+echo "  → Running pytest..."
+if command -v pytest &> /dev/null; then
+    pytest tests/test_core.py tests/test_comprehensive.py tests/test_terminal_isolation.py -v --tb=short -q
+    echo "    ✅ tests passed"
+else
+    echo "    ⚠️  pytest not installed, skipping"
+fi
+
+echo ""
+echo "✅ All pre-commit checks passed!"
+echo ""
