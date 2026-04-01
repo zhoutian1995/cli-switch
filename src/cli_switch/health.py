@@ -144,9 +144,11 @@ class HealthChecker:
             "status": result.status.value,
             "message": result.message,
             "latency_ms": result.latency_ms,
-            "last_checked": result.last_checked.isoformat()
-            if result.last_checked
-            else datetime.now().isoformat(),
+            "last_checked": (
+                result.last_checked.isoformat()
+                if result.last_checked
+                else datetime.now().isoformat()
+            ),
             "error_type": result.error_type,
         }
 

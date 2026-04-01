@@ -13,10 +13,8 @@ import os
 import sys
 import json
 import time
-import tempfile
-import subprocess
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -29,20 +27,15 @@ from cli_switch.session import (
     set_session_state,
     cleanup_stale_sessions,
     delete_session_state,
-    get_global_state,
     get_effective_state,
     is_process_alive,
-    get_sessions_dir,
 )
 from cli_switch.hooks import (
     execute_hook,
-    execute_hooks,
     execute_post_switch,
-    is_hook_active,
     add_hook,
     remove_hook,
     load_hooks_config,
-    save_hooks_config,
     clear_hooks,
 )
 
@@ -69,7 +62,7 @@ class TestTTYManagement:
                 tool="claude",
                 model="qwen",
                 model_id="qwen3.5-plus",
-                base_url="https://test.example.com"
+                base_url="https://test.example.com",
             )
             assert success is True
 
@@ -131,12 +124,11 @@ class TestStateCleanup:
 
             # 手动创建无效状态（使用不存在的 PID）
             state_file = tmp_path / f"{tty}.json"
-            with open(state_file, 'w') as f:
-                json.dump({
-                    "tty": "/dev/test_cleanup",
-                    "model": "qwen",
-                    "pid": 999999  # 不存在的 PID
-                }, f)
+            with open(state_file, "w") as f:
+                json.dump(
+                    {"tty": "/dev/test_cleanup", "model": "qwen", "pid": 999999},
+                    f,  # 不存在的 PID
+                )
 
             # 创建配套的 env 文件
             env_file = tmp_path / f"{tty}.env"
@@ -161,12 +153,11 @@ class TestStateCleanup:
 
             # 创建无效状态
             state_file = tmp_path / f"{tty_invalid}.json"
-            with open(state_file, 'w') as f:
-                json.dump({
-                    "tty": "/dev/test_invalid",
-                    "model": "kimi",
-                    "pid": 999999  # 不存在的 PID
-                }, f)
+            with open(state_file, "w") as f:
+                json.dump(
+                    {"tty": "/dev/test_invalid", "model": "kimi", "pid": 999999},
+                    f,  # 不存在的 PID
+                )
 
             # 清理
             cleanup_stale_sessions()
@@ -194,11 +185,7 @@ class TestHookExecution:
         """测试占位符替换"""
         context = {"model": "qwen", "tool": "claude"}
         # 使用简单的 echo 命令测试
-        result = execute_hook(
-            "echo 'Model: {model} Tool: {tool}'",
-            context,
-            check_reentrancy=False
-        )
+        result = execute_hook("echo 'Model: {model} Tool: {tool}'", context, check_reentrancy=False)
         assert result is True
 
     def test_hook_reentrancy_protection(self):
@@ -268,15 +255,15 @@ class TestStatePriority:
             "tool": "claude",
             "model": "qwen-tty",
             "model_id": "qwen3.5-plus",
-            "pid": os.getpid()
+            "pid": os.getpid(),
         }
-        with open(sessions_dir / "dev_ttys001.json", 'w') as f:
+        with open(sessions_dir / "dev_ttys001.json", "w") as f:
             json.dump(tty_state, f)
 
         # 模拟全局状态
         config_dir = tmp_path / "config"
         config_dir.mkdir()
-        with open(config_dir / "current.txt", 'w') as f:
+        with open(config_dir / "current.txt", "w") as f:
             f.write("kimi-global")
 
         with patch("cli_switch.session.get_sessions_dir", return_value=sessions_dir):
@@ -329,10 +316,7 @@ class TestAtomicWrites:
             tty = "dev_test_atomic_env"
 
             set_session_state(
-                tty=tty,
-                model="qwen",
-                model_id="qwen3.5-plus",
-                base_url="https://test.example.com"
+                tty=tty, model="qwen", model_id="qwen3.5-plus", base_url="https://test.example.com"
             )
 
             # 验证没有临时文件残留
@@ -361,7 +345,7 @@ class TestShellHookPerformance:
 
         # 创建测试文件
         state_env.parent.mkdir(parents=True, exist_ok=True)
-        with open(state_env, 'w') as f:
+        with open(state_env, "w") as f:
             f.write('export ANTHROPIC_MODEL="qwen"\n')
 
         try:
@@ -394,7 +378,7 @@ class TestIntegration:
                     tool="claude",
                     model="qwen",
                     model_id="qwen3.5-plus",
-                    base_url="https://test.example.com"
+                    base_url="https://test.example.com",
                 )
                 assert success is True
 
@@ -410,7 +394,7 @@ class TestIntegration:
                 assert effective["source"] == "tty"
 
                 # 4. 清理（应该保留，因为 PID 还存活）
-                cleaned = cleanup_stale_sessions()
+                cleanup_stale_sessions()
                 # 当前进程的状态应该保留
 
                 # 5. 删除状态

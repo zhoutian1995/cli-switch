@@ -21,7 +21,7 @@ import time
 import argparse
 import requests
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
+from typing import List, Optional, Tuple
 from dataclasses import dataclass, field
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -101,7 +101,7 @@ def call_anthropic_api(model, api_key: str, prompt: str) -> Tuple[bool, str, str
     try:
         start = time.time()
         response = requests.post(url, headers=headers, json=payload, timeout=120)
-        latency = (time.time() - start) * 1000
+        _ = (time.time() - start) * 1000  # latency (not used)
 
         if response.status_code != 200:
             return False, "", f"HTTP {response.status_code}: {response.text[:200]}"
@@ -140,7 +140,7 @@ def call_gemini_api(model, api_key: str, prompt: str) -> Tuple[bool, str, str]:
     try:
         start = time.time()
         response = requests.post(url, headers=headers, json=payload, timeout=120)
-        latency = (time.time() - start) * 1000
+        _ = (time.time() - start) * 1000  # latency (not used)
 
         if response.status_code != 200:
             return False, "", f"HTTP {response.status_code}: {response.text[:200]}"
@@ -192,7 +192,7 @@ def call_openai_api(model, api_key: str, prompt: str) -> Tuple[bool, str, str]:
     try:
         start = time.time()
         response = requests.post(url, headers=headers, json=payload, timeout=120)
-        latency = (time.time() - start) * 1000
+        _ = (time.time() - start) * 1000  # latency (not used)
 
         if response.status_code != 200:
             return False, "", f"HTTP {response.status_code}: {response.text[:200]}"
@@ -313,7 +313,7 @@ def run_tests(
                         print(f"      响应: {result.response_text[:100]}")
                         print(f"      匹配: {result.matched_keywords}")
                 else:
-                    print(f"❌ 失败")
+                    print("❌ 失败")
                     print(f"      错误: {result.error}")
 
         except Exception as e:

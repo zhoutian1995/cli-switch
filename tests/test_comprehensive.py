@@ -6,7 +6,6 @@ cli-switch 完整测试套件
 
 import os
 import json
-import subprocess
 import tempfile
 import threading
 import time
@@ -14,7 +13,6 @@ import yaml
 from pathlib import Path
 import unittest
 import shutil
-from unittest.mock import patch
 
 import sys
 
@@ -59,22 +57,22 @@ class TestModuleP0_ModelRegistry(unittest.TestCase):
     def test_case_1_2_custom_config_override(self):
         """用例 1.2：自定义配置覆盖 (Deep Merge)"""
         registry = ModelRegistry()
-        original_model = registry.get("qwen")
+        registry.get("glm-5")  # 验证内置模型存在
 
         custom_data = {
-            "name": "Qwen3.5+ (Custom)",
+            "name": "GLM-5 (Custom)",
             "tool": "claude",
-            "model_id": "qwen3.5-plus-custom",
+            "model_id": "glm-5-custom",
             "description": "Custom description for test",
             "base_url": "https://custom.example.com",
         }
 
-        ModelRegistry.add_custom_model("qwen", custom_data)
+        ModelRegistry.add_custom_model("glm-5", custom_data)
 
         registry = ModelRegistry()
-        updated_model = registry.get("qwen")
+        updated_model = registry.get("glm-5")
 
-        self.assertIsNotNone(updated_model, "自定义模型 'qwen' 应该存在")
+        self.assertIsNotNone(updated_model, "自定义模型 'glm-5' 应该存在")
         self.assertEqual(updated_model.description, "Custom description for test")
         self.assertEqual(updated_model.base_url, "https://custom.example.com")
         self.assertEqual(updated_model.source, "custom")

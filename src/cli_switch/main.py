@@ -630,7 +630,7 @@ def handle_chat_test(args: list, registry: ModelRegistry, json_output: bool = Fa
             elif isinstance(content, str):
                 return True, content, ""
 
-        return False, "", f"未知响应格式"
+        return False, "", "未知响应格式"
 
     def call_gemini(model, api_key: str, prompt_text: str):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model.model_id}:generateContent?key={api_key}"
@@ -648,7 +648,7 @@ def handle_chat_test(args: list, registry: ModelRegistry, json_output: bool = Fa
             for p in c.get("content", {}).get("parts", []):
                 if "text" in p:
                     return True, p["text"], ""
-        return False, "", f"无文本内容"
+        return False, "", "无文本内容"
 
     def call_openai(model, api_key: str, prompt_text: str):
         url = f"{model.base_url.rstrip('/')}/chat/completions"

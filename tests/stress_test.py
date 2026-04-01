@@ -16,10 +16,8 @@ CLI-Switch 压力与稳健性测试脚本
 import argparse
 import json
 import os
-import signal
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 import traceback
@@ -27,22 +25,19 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from unittest.mock import patch
+from typing import Any, Dict, List, Tuple
 
 # 添加 src 到路径
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from cli_switch.filelock import FileLock, get_lock, LockTimeout
+from cli_switch.filelock import FileLock, LockTimeout
 from cli_switch.session import (
     get_sessions_dir,
-    set_session_state,
-    get_session_state,
     cleanup_stale_sessions,
     cleanup_stale_sessions_if_needed,
     is_process_alive,
 )
-from cli_switch.hooks import load_hooks_config, clear_hooks
+from cli_switch.hooks import clear_hooks
 
 
 @dataclass
@@ -315,7 +310,7 @@ class StressTestRunner:
             original_content = ""
             if claude_config.exists():
                 original_content = claude_config.read_text(encoding="utf-8")
-                original_data = json.loads(original_content)
+                _ = json.loads(original_content)
 
             print("\n  测试 1: 模拟临时文件写入后、rename 前进程中断...")
 
@@ -390,19 +385,19 @@ time.sleep(10)
                             == "INTERRUPTED_MODEL"
                         ):
                             errors.append("中断进程的写入未被正确回滚")
-                            print(f"    ❌ 中断进程的写入未被正确回滚")
+                            print("    ❌ 中断进程的写入未被正确回滚")
                         else:
-                            print(f"    ✅ 原始配置完整，未被中断进程污染")
+                            print("    ✅ 原始配置完整，未被中断进程污染")
                     except Exception as e:
                         errors.append(f"验证配置内容失败: {e}")
             else:
                 errors.append("原始配置文件不存在")
-                print(f"    ❌ 原始配置文件不存在")
+                print("    ❌ 原始配置文件不存在")
 
             # 清理临时文件
             if temp_path.exists():
                 temp_path.unlink()
-                print(f"    已清理临时文件")
+                print("    已清理临时文件")
 
             print("\n  测试 2: 验证正常切换后配置完整性...")
 
@@ -411,7 +406,7 @@ time.sleep(10)
             if returncode == 0:
                 valid, error = self.verify_json_config(claude_config)
                 if valid:
-                    print(f"    ✅ 正常切换后配置完整")
+                    print("    ✅ 正常切换后配置完整")
                 else:
                     errors.append(f"正常切换后配置损坏: {error}")
                     print(f"    ❌ 正常切换后配置损坏: {error}")
@@ -426,7 +421,7 @@ time.sleep(10)
 
                 shutil.copy2(backup_path, claude_config)
                 backup_path.unlink()
-                print(f"\n  已恢复原始配置")
+                print("\n  已恢复原始配置")
 
         duration = (time.time() - start) * 1000
         passed = len(errors) == 0
@@ -475,9 +470,7 @@ time.sleep(10)
                 # 验证 stdout 是否为合法 JSON
                 try:
                     result = json.loads(stdout)
-                    is_valid_json = True
                 except json.JSONDecodeError as e:
-                    is_valid_json = False
                     errors.append(f"{desc}: stdout 不是合法 JSON - {e}")
                     print(f"    ❌ stdout 不是合法 JSON: {e}")
                     print(f"       stdout[:200] = {stdout[:200]}")
@@ -486,7 +479,7 @@ time.sleep(10)
                 # 验证 JSON 结构
                 if "success" not in result:
                     errors.append(f"{desc}: JSON 缺少 'success' 字段")
-                    print(f"    ❌ JSON 缺少 'success' 字段")
+                    print("    ❌ JSON 缺少 'success' 字段")
                     continue
 
                 # 验证期望结果
@@ -500,17 +493,17 @@ time.sleep(10)
                         passed_count += 1
                     else:
                         errors.append(f"{desc}: 失败但无 error/message 字段")
-                        print(f"    ❌ 失败但无 error/message 字段")
+                        print("    ❌ 失败但无 error/message 字段")
                 elif not expect_success and actual_success:
                     errors.append(f"{desc}: 期望失败但实际成功")
-                    print(f"    ❌ 期望失败但实际成功")
+                    print("    ❌ 期望失败但实际成功")
                 else:
                     passed_count += 1
                     print(f"    ✅ JSON 结构正确, success={actual_success}")
 
             except subprocess.TimeoutExpired:
                 errors.append(f"{desc}: 命令超时")
-                print(f"    ❌ 命令超时")
+                print("    ❌ 命令超时")
             except Exception as e:
                 errors.append(f"{desc}: 异常 - {e}")
                 print(f"    ❌ 异常: {e}")
@@ -623,7 +616,7 @@ time.sleep(10)
                     errors.append(f"并发清理异常: {error}")
                     print(f"    ❌ 并发清理异常: {error}")
 
-        print(f"    ✅ 并发清理完成，无死锁")
+        print("    ✅ 并发清理完成，无死锁")
 
         # 清理测试文件
         for f in created_files:
@@ -654,9 +647,9 @@ time.sleep(10)
         if marker_file.exists():
             second_mtime = marker_file.stat().st_mtime
             print(f"    marker 文件 mtime: {first_mtime} -> {second_mtime}")
-            print(f"    ✅ 限流机制正常")
+            print("    ✅ 限流机制正常")
         else:
-            print(f"    ⚠️  marker 文件不存在")
+            print("    ⚠️  marker 文件不存在")
 
         duration = (time.time() - start) * 1000
         passed = len(errors) == 0

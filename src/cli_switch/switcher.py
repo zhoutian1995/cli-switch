@@ -126,9 +126,9 @@ class Switcher:
                     # 智谱模型使用 OPENROUTER 配置
                     if "env" not in config:
                         config["env"] = {}
-                    config["env"]["OPENROUTER_BASE_URL"] = (
-                        "https://open.bigmodel.cn/api/coding/paas/v4"
-                    )
+                    config["env"][
+                        "OPENROUTER_BASE_URL"
+                    ] = "https://open.bigmodel.cn/api/coding/paas/v4"
                     if model.api_key_env:
                         api_key = os.getenv(model.api_key_env)
                         if api_key:
@@ -185,25 +185,25 @@ class Switcher:
                     # 检查是否已有 model_providers 配置
                     if f"[model_providers.{provider_name}]" not in content:
                         # 添加 model_providers 配置
-                        provider_config = f'''
+                        provider_config = f"""
 
 [model_providers.{provider_name}]
 name = "{provider_name}"
 base_url = "{base_url}"
 env_key = "{env_key}"
 wire_api = "chat"
-'''
+"""
                         content = content.rstrip() + provider_config + "\n"
                     else:
                         # 更新现有的 provider 配置
                         content = re.sub(
                             r"\[model_providers\." + provider_name + r"\].*?(?=\n\[|\Z)",
-                            f'''[model_providers.{provider_name}]
+                            f"""[model_providers.{provider_name}]
 name = "{provider_name}"
 base_url = "{base_url}"
 env_key = "{env_key}"
 wire_api = "chat"
-''',
+""",
                             content,
                             flags=re.DOTALL,
                         )
@@ -236,24 +236,24 @@ wire_api = "chat"
                     env_key = model.api_key_env or "OPENAI_API_KEY"
 
                     if f"[model_providers.{provider_name}]" not in content:
-                        provider_config = f'''
+                        provider_config = f"""
 
 [model_providers.{provider_name}]
 name = "{provider_name}"
 base_url = "{base_url}"
 env_key = "{env_key}"
 wire_api = "chat"
-'''
+"""
                         content = content.rstrip() + provider_config + "\n"
                     else:
                         content = re.sub(
                             r"\[model_providers\." + provider_name + r"\].*?(?=\n\[|\Z)",
-                            f'''[model_providers.{provider_name}]
+                            f"""[model_providers.{provider_name}]
 name = "{provider_name}"
 base_url = "{base_url}"
 env_key = "{env_key}"
 wire_api = "chat"
-''',
+""",
                             content,
                             flags=re.DOTALL,
                         )

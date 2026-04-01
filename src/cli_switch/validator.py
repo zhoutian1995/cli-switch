@@ -18,10 +18,11 @@ from typing import List, Dict, Any, Union
 @dataclass
 class ValidationIssue:
     """验证问题"""
-    level: str        # "error" | "warning"
-    rule: str         # 规则名
-    message: str      # 人类可读的错误信息
-    suggestion: str   # 修复建议
+
+    level: str  # "error" | "warning"
+    rule: str  # 规则名
+    message: str  # 人类可读的错误信息
+    suggestion: str  # 修复建议
 
     def __str__(self):
         icon = "❌" if self.level == "error" else "⚠️"
@@ -59,10 +60,11 @@ def _is_registry_format(tools) -> bool:
     if not tools:
         return False
     first = next(iter(tools.values()), None)
-    return hasattr(first, 'model_id')  # Model 对象有 model_id 属性
+    return hasattr(first, "model_id")  # Model 对象有 model_id 属性
 
 
 # ========== Registry 格式验证 ==========
+
 
 def _check_registry_command_exists(models: Dict) -> List[ValidationIssue]:
     """Registry 格式：检查工具命令是否存在"""
@@ -76,12 +78,14 @@ def _check_registry_key_unique(models: Dict) -> List[ValidationIssue]:
     seen = {}
     for key, model in models.items():
         if key in seen:
-            issues.append(ValidationIssue(
-                level="error",
-                rule="key_unique",
-                message=f"模型 key '{key}' 重复",
-                suggestion="修改其中一个 key，确保唯一性"
-            ))
+            issues.append(
+                ValidationIssue(
+                    level="error",
+                    rule="key_unique",
+                    message=f"模型 key '{key}' 重复",
+                    suggestion="修改其中一个 key，确保唯一性",
+                )
+            )
         seen[key] = True
     return issues
 
@@ -89,16 +93,19 @@ def _check_registry_key_unique(models: Dict) -> List[ValidationIssue]:
 def _check_registry_key_format(models: Dict) -> List[ValidationIssue]:
     """Registry 格式：检查 key 格式"""
     import re
+
     issues = []
-    pattern = re.compile(r'^[a-z0-9][a-z0-9._-]*[a-z0-9]$|^[a-z0-9]$')
+    pattern = re.compile(r"^[a-z0-9][a-z0-9._-]*[a-z0-9]$|^[a-z0-9]$")
     for key, model in models.items():
         if key and not pattern.match(key):
-            issues.append(ValidationIssue(
-                level="warning",
-                rule="key_format",
-                message=f"模型 key '{key}' 不符合推荐格式（小写+连字符）",
-                suggestion=f"建议改为类似 'glm-4.7' 的格式"
-            ))
+            issues.append(
+                ValidationIssue(
+                    level="warning",
+                    rule="key_format",
+                    message=f"模型 key '{key}' 不符合推荐格式（小写+连字符）",
+                    suggestion="建议改为类似 'glm-4.7' 的格式",
+                )
+            )
     return issues
 
 
@@ -111,12 +118,14 @@ def _check_command_exists(tools: Dict[str, Any]) -> List[ValidationIssue]:
     for tool_key, tool in tools.items():
         cmd = tool.get("command", "").split()[0]
         if cmd and not shutil.which(cmd):
-            issues.append(ValidationIssue(
-                level="error",
-                rule="command_exists",
-                message=f"工具 '{tool_key}' 的命令 '{cmd}' 不在 PATH 中",
-                suggestion=f"检查 {cmd} 是否已安装，或将其路径加入 PATH"
-            ))
+            issues.append(
+                ValidationIssue(
+                    level="error",
+                    rule="command_exists",
+                    message=f"工具 '{tool_key}' 的命令 '{cmd}' 不在 PATH 中",
+                    suggestion=f"检查 {cmd} 是否已安装，或将其路径加入 PATH",
+                )
+            )
     return issues
 
 
@@ -131,12 +140,14 @@ def _check_key_unique(tools: Dict[str, Any]) -> List[ValidationIssue]:
             for model in provider.get("models", []):
                 key = model.get("key", "")
                 if key in seen:
-                    issues.append(ValidationIssue(
-                        level="error",
-                        rule="key_unique",
-                        message=f"工具 '{tool_key}' 中模型 key '{key}' 重复",
-                        suggestion=f"修改其中一个 key，确保唯一性"
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            level="error",
+                            rule="key_unique",
+                            message=f"工具 '{tool_key}' 中模型 key '{key}' 重复",
+                            suggestion="修改其中一个 key，确保唯一性",
+                        )
+                    )
                 seen.add(key)
                 all_keys.append(key)
     return issues
@@ -150,44 +161,51 @@ def _check_provider_non_empty(tools: Dict[str, Any]) -> List[ValidationIssue]:
         for provider_key, provider in models.items():
             model_list = provider.get("models", [])
             if not model_list:
-                issues.append(ValidationIssue(
-                    level="error",
-                    rule="provider_exists",
-                    message=f"工具 '{tool_key}' 的 provider '{provider_key}' 没有模型",
-                    suggestion="添加至少一个模型，或删除空的 provider"
-                ))
+                issues.append(
+                    ValidationIssue(
+                        level="error",
+                        rule="provider_exists",
+                        message=f"工具 '{tool_key}' 的 provider '{provider_key}' 没有模型",
+                        suggestion="添加至少一个模型，或删除空的 provider",
+                    )
+                )
     return issues
 
 
 def _check_cli_switch_available() -> List[ValidationIssue]:
     """检查 cli-switch 命令是否可用"""
     if not shutil.which("cli-switch"):
-        return [ValidationIssue(
-            level="warning",
-            rule="cli_switch_available",
-            message="cli-switch 不在 PATH 中，切换功能不可用",
-            suggestion="运行 pip install cli-switch 或检查 PATH"
-        )]
+        return [
+            ValidationIssue(
+                level="warning",
+                rule="cli_switch_available",
+                message="cli-switch 不在 PATH 中，切换功能不可用",
+                suggestion="运行 pip install cli-switch 或检查 PATH",
+            )
+        ]
     return []
 
 
 def _check_key_format(tools: Dict[str, Any]) -> List[ValidationIssue]:
     """检查模型 key 格式是否规范（小写+连字符）"""
     import re
+
     issues = []
-    pattern = re.compile(r'^[a-z0-9][a-z0-9._-]*[a-z0-9]$|^[a-z0-9]$')
+    pattern = re.compile(r"^[a-z0-9][a-z0-9._-]*[a-z0-9]$|^[a-z0-9]$")
     for tool_key, tool in tools.items():
         models = tool.get("models", {})
         for provider_key, provider in models.items():
             for model in provider.get("models", []):
                 key = model.get("key", "")
                 if key and not pattern.match(key):
-                    issues.append(ValidationIssue(
-                        level="warning",
-                        rule="key_format",
-                        message=f"模型 key '{key}' 不符合推荐格式（小写+连字符）",
-                        suggestion=f"建议改为类似 'glm-4.7' 的格式"
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            level="warning",
+                            rule="key_format",
+                            message=f"模型 key '{key}' 不符合推荐格式（小写+连字符）",
+                            suggestion="建议改为类似 'glm-4.7' 的格式",
+                        )
+                    )
     return issues
 
 

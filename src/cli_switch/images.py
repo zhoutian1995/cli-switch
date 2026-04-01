@@ -6,11 +6,10 @@
 
 import os
 import requests
-import json
 import time
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from .models import Model, ModelRegistry
+from .models import ModelRegistry
 import base64
 
 
@@ -180,14 +179,14 @@ def generate_image_with_nanobanana(prompt: str, output_dir: Optional[str] = None
                         virtual_filepath = output_path / virtual_filename
 
                         with open(virtual_filepath, "w", encoding="utf-8") as f:
-                            f.write(f"图像生成不可用\n")
+                            f.write("图像生成不可用\n")
                             f.write(f"模型: {model_id}\n")
                             f.write(f"请求: {prompt}\n")
-                            f.write(f"\n此模型当前不支持直接图像生成功能.\n")
-                            f.write(f"请考虑:\n")
-                            f.write(f"- 使用专门的图像生成API (如 DALL-E, Midjourney)\n")
-                            f.write(f"- 将此作为概念图请求发送给人类设计师\n")
-                            f.write(f"- 配置支持图像生成功能的MCP扩展\n")
+                            f.write("\n此模型当前不支持直接图像生成功能.\n")
+                            f.write("请考虑:\n")
+                            f.write("- 使用专门的图像生成API (如 DALL-E, Midjourney)\n")
+                            f.write("- 将此作为概念图请求发送给人类设计师\n")
+                            f.write("- 配置支持图像生成功能的MCP扩展\n")
 
                         return {
                             "success": True,
@@ -210,9 +209,9 @@ def generate_image_with_nanobanana(prompt: str, output_dir: Optional[str] = None
             # 处理API错误
             error_detail = response.text
             if "API key not valid" in response.text:
-                error_msg = f"API密钥无效或未授权该模型。请检查GEMINI_API_KEY设置。"
+                error_msg = "API密钥无效或未授权该模型。请检查GEMINI_API_KEY设置。"
             elif "quota exceeded" in response.text.lower():
-                error_msg = f"API配额已用完。请检查计费设置。"
+                error_msg = "API配额已用完。请检查计费设置。"
             elif "model_not_found" in response.text.lower():
                 error_msg = f"模型 '{model_id}' 无法找到。可能需要付费计划或已停用。"
             else:
@@ -326,7 +325,7 @@ def generate_image_with_imagen(prompt: str, output_dir: Optional[str] = None) ->
                         except Exception as e:
                             print(f"   ⚠️ 图像解码失败: {e}")
                     else:
-                        print(f"   ⚠️ 预测结果中无图像数据")
+                        print("   ⚠️ 预测结果中无图像数据")
 
                 if generated_files:
                     return {
