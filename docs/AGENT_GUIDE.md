@@ -24,14 +24,14 @@
 - 与用户沟通
 
 **推荐模型：**
-- **默认：** `qwen` - 通义千问3.5增强版，平衡性能
-- **复杂任务：** `qwen-max` - 最强推理能力
-- **代码相关：** `qwen-coder` - 代码专用
+- **默认：** `opus4.6` - 写后端/架构代码（首选）
+- **复杂任务：** `glm-5.1` - 最新旗舰版，最强推理
+- **代码相关：** `glm-5` - 代码专用
 
 **使用场景：**
 ```bash
 # 任务开始
-cli-switch qwen
+cli-switch opus4.6
 cli-switch --json status
 
 # 分配给开发者
@@ -39,7 +39,7 @@ cli-switch --json status
 
 # 收到开发者完成通知
 # 切换到审查模式
-cli-switch --tool codex qwen-coder
+cli-switch --tool codex gpt-5.2-codex
 # codex-reviewer开始审查
 
 # 并行架构审查
@@ -76,14 +76,12 @@ cli-switch status
 - 提供具体修复建议
 
 **推荐模型：**
-- **代码审查：** `qwen-coder` (Codex CLI) - 代码专用
-- **深度分析：** `qwen-max` (Codex CLI) - 最强推理
-- **快速审查：** `qwen` (Codex CLI) - 快速响应
+- **代码审查：** `gpt-5.2-codex` (Codex CLI) - 深度搜索（首选）
 
 **使用场景：**
 ```bash
 # 确保使用Codex工具
-cli-switch --tool codex qwen-coder
+cli-switch --tool codex gpt-5.2-codex
 
 # 验证环境
 cli-switch --json status
@@ -100,7 +98,7 @@ EOF
 cat /tmp/review-input.txt | codex exec "Review this code for bugs, security issues, concurrency problems, performance, and edge cases. Output in Chinese."
 
 # 如果需要更强分析
-cli-switch --tool codex qwen-max
+cli-switch --tool codex gpt-5.2-codex
 cat /tmp/review-input.txt | codex exec "Deep analysis for critical bugs and security vulnerabilities. Output in Chinese."
 
 # 汇总报告发送给Team Lead
@@ -236,20 +234,20 @@ cli-switch --tool gemini nanobanana
 ```bash
 # === Team Lead ===
 # 1. 任务开始
-cli-switch qwen
+cli-switch opus4.6
 cli-switch status
 
 # 输出：
 # 当前工具：CLAUDE
-# 当前模型：Qwen3.5+ (qwen)
-# 模型 ID: qwen3.5-plus
+# 当前模型：Opus 4.6 (opus4.6)
+# 模型 ID: claude-opus-4-6
 
 # 2. 分配任务给developer
 # [developer开始编写代码...]
 
 # 3. developer完成，进入审查阶段
 # Team Lead切换到审查模型
-cli-switch --tool codex qwen-coder
+cli-switch --tool codex gpt-5.2-codex
 # 通知codex-reviewer开始审查
 
 cli-switch --tool gemini gemini-3.1-pro
@@ -264,11 +262,11 @@ cli-switch status
 
 # === Codex Reviewer ===
 # 1. 确认使用Codex工具
-cli-switch --tool codex qwen-coder
+cli-switch --tool codex gpt-5.2-codex
 
 # 2. 验证状态
 cli-switch --json status
-# 返回：{"active_tool": "codex", "active_model": "qwen-coder", ...}
+# 返回：{"active_tool": "codex", "active_model": "gpt-5.2-codex", ...}
 
 # 3. 读取代码变更
 # Read files...
@@ -306,8 +304,8 @@ cli-switch --json status
 # 返回示例：
 {
   "active_tool": "claude",
-  "active_model": "qwen-coder",
-  "model_name": "Qwen Coder+"
+  "active_model": "opus4.6",
+  "model_name": "Opus 4.6"
 }
 
 # 2. 根据需要切换模型
@@ -344,7 +342,7 @@ cat ~/.claude/settings.json
 env | grep -E "ZHIPU_AUTH_TOKEN"
 
 # 重新切换
-cli-switch qwen
+cli-switch opus4.6
 ```
 
 ### 问题2：多个Agent状态冲突
@@ -358,7 +356,7 @@ tty
 rm ~/.cli-switch/sessions/*.json
 
 # 重新切换
-cli-switch qwen
+cli-switch opus4.6
 ```
 
 ### 问题3：Codex/Gemini CLI不可用
@@ -378,14 +376,14 @@ gemini auth status
 ### 监控切换延迟
 
 ```bash
-time cli-switch qwen
+time cli-switch opus4.6
 # 应该 < 1秒
 ```
 
 ### 监控API响应
 
 ```bash
-cli-switch test qwen
+cli-switch test opus4.6
 # 检查连通性和响应时间
 ```
 
@@ -394,11 +392,11 @@ cli-switch test qwen
 ```bash
 # 多个Agent同时切换
 # Agent 1:
-cli-switch qwen &
+cli-switch opus4.6 &
 # Agent 2:
-cli-switch glm &
+cli-switch glm-5 &
 # Agent 3:
-cli-switch qwen-coder &
+cli-switch gpt-5.2-codex &
 
 # 检查是否有冲突
 cli-switch status

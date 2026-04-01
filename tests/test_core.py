@@ -19,40 +19,40 @@ class TestModelRegistry(unittest.TestCase):
         self.registry = ModelRegistry()
 
     def test_total_models(self):
-        """测试模型总数"""
-        self.assertEqual(self.registry.count(), 23)
+        """测试模型总数 (7 个智谱 + 7 个 Fucheers + 5 个 Google + 1 个 OpenAI = 20)"""
+        self.assertEqual(self.registry.count(), 20)
 
     def test_claude_models(self):
-        """测试 Claude 模型数量 (8 个百炼 + 2 个智谱 + 7 个 Fucheers = 17)"""
+        """测试 Claude 模型数量 (7 个智谱 + 7 个 Fucheers = 14)"""
         count = self.registry.count(ToolType.CLAUDE)
-        self.assertEqual(count, 17)
+        self.assertEqual(count, 14)
 
     def test_gemini_models(self):
-        """测试 Gemini 模型数量 (2 个智谱 + 5 个 Gemini 原生 = 7)"""
+        """测试 Gemini 模型数量 (7 个智谱 + 5 个 Google = 12)"""
         count = self.registry.count(ToolType.GEMINI)
-        self.assertEqual(count, 7)
+        self.assertEqual(count, 12)
 
     def test_codex_models(self):
-        """测试 Codex 模型数量 (8 个百炼 + 1 个 Codex 原生 = 9)"""
+        """测试 Codex 模型数量 (1 个 OpenAI = 1)"""
         count = self.registry.count(ToolType.CODEX)
-        self.assertEqual(count, 9)
+        self.assertEqual(count, 1)
 
     def test_get_model(self):
         """测试获取模型"""
-        model = self.registry.get("qwen")
+        model = self.registry.get("opus4.6")
         self.assertIsNotNone(model)
-        self.assertEqual(model.name, "Qwen3.5+")
+        self.assertEqual(model.name, "Opus 4.6")
         self.assertEqual(model.tool, ToolType.CLAUDE)
 
     def test_model_exists(self):
         """测试模型是否存在"""
-        self.assertTrue(self.registry.exists("qwen"))
+        self.assertTrue(self.registry.exists("opus4.6"))
         self.assertFalse(self.registry.exists("nonexistent"))
 
     def test_list_models(self):
         """测试列出模型"""
         all_models = self.registry.list()
-        self.assertEqual(len(all_models), 23)
+        self.assertEqual(len(all_models), 20)
 
 
 class TestConfig(unittest.TestCase):
@@ -127,7 +127,7 @@ class TestCustomModels(unittest.TestCase):
     def test_custom_model_override_builtin(self):
         """测试自定义模型覆盖内置模型"""
         # 使用内置模型的 key 添加自定义配置
-        override_key = "qwen"
+        override_key = "opus4.6"
         original_model = self.registry.get(override_key)
         self.assertIsNotNone(original_model)
 
@@ -135,9 +135,9 @@ class TestCustomModels(unittest.TestCase):
         ModelRegistry.add_custom_model(
             override_key,
             {
-                "name": "Overridden Qwen",
+                "name": "Overridden Opus",
                 "tool": "claude",
-                "model_id": "overridden-qwen",
+                "model_id": "overridden-opus",
                 "description": "Custom override",
             },
         )
@@ -147,7 +147,7 @@ class TestCustomModels(unittest.TestCase):
         model = new_registry.get(override_key)
 
         self.assertIsNotNone(model)
-        self.assertEqual(model.name, "Overridden Qwen")
+        self.assertEqual(model.name, "Overridden Opus")
         self.assertEqual(model.source, "custom")
 
         # 清理
@@ -168,7 +168,7 @@ class TestCustomModels(unittest.TestCase):
         self.assertEqual(model.source, "custom")
 
         # 内置模型检查
-        builtin = new_registry.get("qwen")
+        builtin = new_registry.get("opus4.6")
         self.assertEqual(builtin.source, "builtin")
 
 

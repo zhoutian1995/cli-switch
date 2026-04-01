@@ -131,12 +131,12 @@ class TestModuleP0_ModelRegistry(unittest.TestCase):
 
     def test_case_1_5_idiot_proof_deletion_interception(self):
         """用例 1.5：防呆设计（删除拦截）"""
-        success = ModelRegistry.remove_custom_model("qwen")
+        success = ModelRegistry.remove_custom_model("opus4.6")
         self.assertFalse(success, "内置模型不应被删除")
 
         registry = ModelRegistry()
-        builtin_model = registry.get("qwen")
-        self.assertIsNotNone(builtin_model, "内置模型 'qwen' 应该仍然存在")
+        builtin_model = registry.get("opus4.6")
+        self.assertIsNotNone(builtin_model, "内置模型 'opus4.6' 应该仍然存在")
 
 
 class TestModuleP1_TerminalIsolation(unittest.TestCase):
