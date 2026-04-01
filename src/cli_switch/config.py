@@ -40,7 +40,7 @@ class Config:
     def _load_defaults(self):
         self._data = {
             "active_tool": "claude",
-            "active_model": "qwen",
+            "active_model": "opus4.6",
             "test": {"connect_timeout": 5, "response_timeout": 30},
             "log": {
                 "level": "INFO",
@@ -110,7 +110,7 @@ class Config:
 
     @property
     def active_model(self) -> str:
-        return self._data.get("active_model", "qwen")
+        return self._data.get("active_model", "opus4.6")
 
     @active_model.setter
     def active_model(self, value: str):

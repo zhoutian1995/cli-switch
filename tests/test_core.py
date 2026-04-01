@@ -65,7 +65,7 @@ class TestConfig(unittest.TestCase):
         """测试默认配置"""
         data = self.config.load()
         self.assertEqual(self.config.active_tool, "claude")
-        self.assertEqual(self.config.active_model, "qwen")
+        self.assertEqual(self.config.active_model, "opus4.6")
 
     def test_get_set(self):
         """测试配置读写"""

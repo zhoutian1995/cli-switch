@@ -113,7 +113,7 @@ class MCPManager:
             raise MCPError(f"配置文件解析错误：{path}: {e}")
 
     def _save_json(self, path: Path, data: Dict[str, Any]):
-        """保存 JSON 文件"""
+        """保存 JSON 文件（原子写入）"""
         path.parent.mkdir(parents=True, exist_ok=True)
 
         # 备份现有文件
@@ -121,8 +121,11 @@ class MCPManager:
             backup_path = path.with_suffix(".json.bak")
             shutil.copy2(path, backup_path)
 
-        with open(path, "w", encoding="utf-8") as f:
+        # 原子写入：temp + rename
+        temp_file = path.with_suffix(".json.tmp")
+        with open(temp_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        temp_file.replace(path)
 
     def list_servers(self) -> List[MCPServer]:
         """列出所有已配置的 MCP Server"""

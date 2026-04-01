@@ -162,8 +162,8 @@ def get_session_state(tty: Optional[str] = None) -> Optional[Dict[str, Any]]:
 def set_session_state(
     tty: Optional[str] = None,
     tool: str = "claude",
-    model: str = "qwen",
-    model_id: str = "qwen3.5-plus",
+    model: str = "opus4.6",
+    model_id: str = "claude-opus-4-6",
     base_url: Optional[str] = None,
     api_key_env: Optional[str] = None,
 ) -> bool:

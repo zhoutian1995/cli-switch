@@ -564,16 +564,13 @@ def handle_chat_test(args: list, registry: ModelRegistry, json_output: bool = Fa
             i += 1
 
     MODEL_KEYWORDS = {
-        "qwen": ["qwen", "通义", "千问"],
-        "qwen-max": ["qwen", "通义", "千问"],
-        "qwen-next": ["qwen", "通义", "千问"],
-        "qwen-coder": ["qwen", "通义", "千问"],
-        "minimax": ["minimax", "海螺"],
-        "glm": ["glm", "智谱"],
-        "glm47": ["glm", "智谱"],
-        "glm47-zhipu": ["glm", "智谱"],
-        "glm5-zhipu": ["glm", "智谱"],
-        "kimi": ["kimi", "月之暗面"],
+        "glm-5.1": ["glm", "智谱"],
+        "glm-5-turbo": ["glm", "智谱"],
+        "glm-5": ["glm", "智谱"],
+        "glm-4.7": ["glm", "智谱"],
+        "glm-4.6": ["glm", "智谱"],
+        "glm-4.5": ["glm", "智谱"],
+        "glm-4.5-air": ["glm", "智谱"],
         "opus4.6": ["claude", "opus", "antigravity"],
         "opus4.6-thinking": ["claude", "opus", "antigravity"],
         "opus4.5-20251101": ["claude", "opus", "antigravity"],
@@ -582,6 +579,8 @@ def handle_chat_test(args: list, registry: ModelRegistry, json_output: bool = Fa
         "sonnet4.6-thinking": ["claude", "sonnet", "antigravity", "deepmind"],
         "haiku4.5-20251001": ["claude", "haiku", "antigravity", "gemini"],
         "gemini-3.1-pro": ["gemini", "google"],
+        "nanobanana": ["gemini", "google", "banana"],
+        "imagen-4-ultra": ["gemini", "google", "imagen"],
         "gemini-2.5-flash": ["gemini", "google"],
         "gemini-2.5-pro": ["gemini", "google"],
         "gpt-5.2-codex": ["gpt", "openai", "chatgpt"],
@@ -972,6 +971,7 @@ def handle_validate(registry, json_output: bool = False):
 
     if json_output:
         import json
+
         result = {
             "success": len([i for i in issues if i.level == "error"]) == 0,
             "errors": len([i for i in issues if i.level == "error"]),
@@ -979,7 +979,7 @@ def handle_validate(registry, json_output: bool = False):
             "issues": [
                 {"level": i.level, "rule": i.rule, "message": i.message, "suggestion": i.suggestion}
                 for i in issues
-            ]
+            ],
         }
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
