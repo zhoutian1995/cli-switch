@@ -346,3 +346,4 @@ MIT License - 详见 [LICENSE](LICENSE)
 <div align="center">
 <img src="wechat-qrcode.jpg" width="200">
 </div>
+测试 pre-commit hook
