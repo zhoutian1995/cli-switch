@@ -122,6 +122,75 @@ cli-switch --tool gemini gemini-3.1-pro
 gemini -p "你的任务描述"
 ```
 
+## 🤖 Agent Mode（多 Agent 并发安全）
+
+> v1.2.0 新增
+
+多 Agent 共享配置文件时，用 `cli-switch env` 代替 `cli-switch <model>`，**零副作用**，并发安全。
+
+### 为什么需要 Agent Mode？
+
+`cli-switch opus4.6` 会写入 `~/.claude/settings.json`。如果 Mike 和 Bob 同时调用，后写的覆盖前写的。`cli-switch env` 只输出环境变量，不改任何文件。
+
+### 用法
+
+```bash
+# 获取模型的环境变量（JSON 格式，推荐）
+cli-switch env --json opus4.6
+
+# 获取模型的环境变量（shell 格式）
+cli-switch env opus4.6
+
+# 跨工具（全局 flag 在 command 之前）
+cli-switch --tool gemini --json env gemini-3.1-pro
+cli-switch --tool codex --json env gpt-5.2-codex
+```
+
+### JSON 输出结构
+
+```json
+{
+  "success": true,
+  "tool": "claude",
+  "model_key": "opus4.6",
+  "model_id": "claude-opus-4-6",
+  "env": {
+    "ANTHROPIC_MODEL": "claude-opus-4-6",
+    "ANTHROPIC_BASE_URL": "https://www.fucheers.top",
+    "ANTHROPIC_AUTH_TOKEN": "sk-..."
+  },
+  "command": "claude",
+  "model_flag": "--model",
+  "model_arg": "claude-opus-4-6"
+}
+```
+
+### Agent 调用 CLI 工具的完整流程
+
+```bash
+# Step 1: 获取 env 配置
+cli-switch env --json opus4.6
+
+# Step 2: 注入环境变量，调用 CLI 工具
+# Claude Code（ANTHROPIC_MODEL 优先级高于 settings.json）
+ANTHROPIC_MODEL="claude-opus-4-6" claude -p "任务描述"
+
+# Gemini CLI（GEMINI_MODEL 优先级高于 settings.json）
+GEMINI_MODEL="gemini-3.1-pro-preview" gemini -p "任务描述"
+
+# Codex CLI（通过 --model 参数指定，因为 Codex 不支持 env var 指定模型）
+codex --model gpt-5.2-codex exec "任务描述"
+```
+
+### 关键特性
+
+- **零副作用**：不修改任何配置文件
+- **瞬间完成**：无网络请求，无文件 I/O，无锁
+- **并发安全**：多个 Agent 同时调用互不干扰
+- **API key 安全**：从进程环境变量读取，不写入磁盘
+
+---
+
 ## 🔧 高级功能
 
 ### 自定义模型

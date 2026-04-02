@@ -9,13 +9,14 @@ CLI Switch - AI CLI 工具切换器
 - 防重入：自动检测并防止 hook 循环触发
 """
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 __author__ = "OpenClaw Team"
 __email__ = "willezhou2015@gmail.com"
 
 from .models import Model, ModelRegistry
 from .config import Config, ConfigError
 from .switcher import Switcher, SwitchError
+from .env_resolver import resolve_env_vars, get_model_arg, get_tool_command, EnvResolveError
 from .mcp import MCPManager, MCPError, MCPServer
 from .session import (
     get_tty,
@@ -46,6 +47,10 @@ __all__ = [
     "ConfigError",
     "Switcher",
     "SwitchError",
+    "EnvResolveError",
+    "resolve_env_vars",
+    "get_model_arg",
+    "get_tool_command",
     "MCPManager",
     "MCPError",
     "MCPServer",

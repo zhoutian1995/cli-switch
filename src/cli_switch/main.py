@@ -12,6 +12,7 @@ from . import __version__
 from .models import ModelRegistry, ToolType
 from .config import Config, ConfigError
 from .switcher import Switcher
+from .env_resolver import resolve_env_vars, get_model_arg, get_tool_command, EnvResolveError
 from .mcp import MCPManager
 from . import hooks as hooks_module
 
@@ -44,6 +45,7 @@ def print_help():
 
 用法:
   cli-switch <model>              切换到指定模型
+  cli-switch env <model>          输出模型环境变量（Agent 模式，零副作用）
   cli-switch list                 列出所有模型
   cli-switch status               显示当前状态
   cli-switch test [model]         测试模型连通性
@@ -109,6 +111,12 @@ Hook 命令:
 跨工具切换:
   cli-switch --tool gemini glm47-zhipu   切换到 Gemini CLI 使用 GLM-4.7
   cli-switch --tool codex qwen           切换到 Codex CLI 使用 Qwen3.5+
+
+Agent 模式（多 Agent 并发安全，零副作用）:
+  cli-switch env opus4.6                 输出 Claude Code 的环境变量
+  cli-switch env --json opus4.6          JSON 格式输出
+  cli-switch env --tool gemini glm-5     输出 Gemini CLI 的环境变量
+  eval "$(cli-switch env opus4.6)" && claude -p "任务"
 
 Hook 配置示例:
   cli-switch hook config add post_switch "echo 'Switched to {model}'"
@@ -275,6 +283,48 @@ def _main_inner(argv: Optional[list] = None, json_output: bool = False):
                     print(f"  ✅ {file_path}")
             else:
                 print(f"❌ {result['error']}")
+    elif cmd == "env":
+        # env 命令可能接收 --json/-j 和 --tool/-t 在 command 之后
+        env_json = "--json" in cmd_args or "-j" in cmd_args
+        if env_json:
+            json_output = True
+        # 检查 --tool 参数
+        env_tool = None
+        tool_flags = ["--tool", "-t"]
+        for i, arg in enumerate(cmd_args):
+            if arg in tool_flags and i + 1 < len(cmd_args):
+                env_tool = cmd_args[i + 1]
+                break
+        if env_tool:
+            target_tool = env_tool
+        # 提取模型名（过滤掉所有 flag）
+        model_key = None
+        skip_next = False
+        value_flags = {"--tool", "-t"}  # 这些 flag 带值
+        for arg in cmd_args:
+            if skip_next:
+                skip_next = False
+                continue
+            if arg.startswith("-"):
+                if arg in value_flags:
+                    skip_next = True
+                continue
+            model_key = arg
+            break
+        if not model_key:
+            if json_output:
+                import json
+
+                print(
+                    json.dumps(
+                        {"success": False, "error": "用法: cli-switch env <model>"},
+                        ensure_ascii=False,
+                    )
+                )
+            else:
+                print("用法: cli-switch env <model>", file=sys.stderr)
+            sys.exit(1)
+        handle_env(model_key, registry, json_output, target_tool)
     elif cmd == "switch":
         if cmd_args:
             handle_switch(cmd_args[0], registry, switcher, json_output, target_tool, custom_hook)
@@ -301,6 +351,71 @@ def handle_list(registry: ModelRegistry, json_output: bool = False):
             print("-" * 50)
             for m in registry.list(tool):
                 print(f"  {m.key:15} → {m.name} ({m.description})")
+
+
+def handle_env(
+    model_key: str,
+    registry: ModelRegistry,
+    json_output: bool = False,
+    target_tool: Optional[str] = None,
+):
+    """处理 env 命令 — 输出模型的环境变量和命令行参数（零副作用）"""
+    import json
+
+    model = registry.get(model_key)
+    if model is None:
+        if json_output:
+            print(
+                json.dumps(
+                    {
+                        "success": False,
+                        "error": f"模型 '{model_key}' 不存在",
+                        "available_models": [m.key for m in registry.list()],
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        else:
+            print(f"错误：模型 '{model_key}' 不存在", file=sys.stderr)
+        sys.exit(1)
+
+    tool = ToolType(target_tool.lower()) if target_tool else model.tool
+
+    try:
+        env_vars = resolve_env_vars(model, tool)
+    except EnvResolveError as e:
+        if json_output:
+            print(
+                json.dumps(
+                    {"success": False, "error": str(e), "model": model_key},
+                    ensure_ascii=False,
+                )
+            )
+        else:
+            print(f"错误：{e}", file=sys.stderr)
+        sys.exit(1)
+
+    model_arg = get_model_arg(model, tool)
+    tool_cmd = get_tool_command(tool)
+
+    if json_output:
+        result = {
+            "success": True,
+            "tool": tool.value,
+            "model_key": model.key,
+            "model_id": model.model_id,
+            "model_name": model.name,
+            "env": env_vars,
+            "command": tool_cmd,
+            "model_flag": "--model",
+            "model_arg": model_arg,
+        }
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        for key, value in env_vars.items():
+            # shell-safe：用单引号包裹，内部单引用转义
+            escaped = value.replace("'", "'\\''")
+            print(f"export {key}='{escaped}'")
 
 
 def handle_switch(

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cli-switch"
-version = "1.1.0"
+version = "1.2.0"
 description = "AI CLI 工具切换器 - 支持 Claude Code, Gemini CLI, Codex CLI"
 readme = "README.md"
 license = {text = "MIT"}
