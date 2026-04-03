@@ -87,9 +87,15 @@ class ModelRegistry:
 
     CUSTOM_MODELS_PATH = Path.home() / ".cli-switch" / "custom_models.yaml"
 
-    def __init__(self):
+    def __init__(self, quiet: bool = False):
         self._models: Dict[str, Model] = {}
+        self._quiet = quiet
         self._load_default_models()
+
+    def _warn(self, msg: str):
+        """仅在非 quiet 模式下输出警告"""
+        if not self._quiet:
+            print(msg, file=sys.stderr)
 
     def _load_default_models(self):
         """从 YAML 文件加载模型配置"""
@@ -150,10 +156,10 @@ class ModelRegistry:
         """
         # 过滤MCP服务器配置等特殊条目
         if key.endswith("-mcp-server") or "mcp-server" in str(data.get("name", "")).lower():
-            print(f"⚠️ 跳过非模型配置项: {key} (MCP服务器配置)", file=sys.stderr)
+            self._warn(f"⚠️ 跳过非模型配置项: {key} (MCP服务器配置)")
             return None
         if data.get("mcp_type") == "server":
-            print(f"⚠️ 跳过非模型配置项: {key} (MCP服务器)", file=sys.stderr)
+            self._warn(f"⚠️ 跳过非模型配置项: {key} (MCP服务器)")
             return None
 
         # 检查是否包含必要的模型字段
@@ -171,7 +177,7 @@ class ModelRegistry:
         is_server_config = any(field in data for field in server_config_fields)
 
         if not has_required_fields and is_server_config:
-            print(f"⚠️ 跳过非模型配置项: {key} (服务器配置)", file=sys.stderr)
+            self._warn(f"⚠️ 跳过非模型配置项: {key} (服务器配置)")
             return None
 
         # 统一必填字段检查

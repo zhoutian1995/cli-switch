@@ -200,8 +200,14 @@ def _main_inner(argv: Optional[list] = None, json_output: bool = False):
             print(f"配置错误：{e}", file=sys.stderr)
         sys.exit(2)
 
-    registry = ModelRegistry()
+    registry = None
     switcher = Switcher(config)
+
+    def get_registry(quiet: bool = False) -> ModelRegistry:
+        nonlocal registry
+        if registry is None:
+            registry = ModelRegistry(quiet=quiet)
+        return registry
 
     cmd = args.command
     json_output = args.json
@@ -213,19 +219,19 @@ def _main_inner(argv: Optional[list] = None, json_output: bool = False):
 
     # 处理 --list
     if args.list:
-        handle_list(registry, json_output)
+        handle_list(get_registry(), json_output)
         return
 
     # 处理 --current
     if args.current:
-        handle_current(switcher, registry, json_output)
+        handle_current(switcher, get_registry(), json_output)
         return
 
     # 处理命令
     if cmd == "list":
-        handle_list(registry, json_output)
+        handle_list(get_registry(), json_output)
     elif cmd == "status":
-        handle_status(switcher, registry, json_output)
+        handle_status(switcher, get_registry(), json_output)
     elif cmd == "test":
         model_key = cmd_args[0] if cmd_args and not cmd_args[0].startswith("-") else None
         timeout = 30
@@ -237,9 +243,9 @@ def _main_inner(argv: Optional[list] = None, json_output: bool = False):
             idx = cmd_args.index("--timeout")
             if idx + 1 < len(cmd_args):
                 timeout = int(cmd_args[idx + 1])
-        handle_test(model_key, registry, config, json_output, timeout)
+        handle_test(model_key, get_registry(), config, json_output, timeout)
     elif cmd == "chat-test":
-        handle_chat_test(cmd_args, registry, json_output)
+        handle_chat_test(cmd_args, get_registry(), json_output)
     elif cmd == "tool":
         if cmd_args:
             config.active_tool = cmd_args[0]
@@ -255,18 +261,18 @@ def _main_inner(argv: Optional[list] = None, json_output: bool = False):
             print("请指定操作：show, edit")
             sys.exit(1)
     elif cmd == "model":
-        handle_model(cmd_args, registry, json_output)
+        handle_model(cmd_args, get_registry(), json_output)
     elif cmd == "mcp":
         handle_mcp(cmd_args, json_output)
     elif cmd == "hook":
         handle_hook(cmd_args, json_output, custom_hook)
     elif cmd == "validate":
-        handle_validate(registry, json_output)
+        handle_validate(get_registry(), json_output)
     elif cmd == "health-check":
         model_key = cmd_args[0] if cmd_args and not cmd_args[0].startswith("-") else None
-        handle_health_check(model_key, registry, json_output)
+        handle_health_check(model_key, get_registry(), json_output)
     elif cmd == "health-report":
-        handle_health_report(registry, json_output)
+        handle_health_report(get_registry(), json_output)
     elif cmd == "image":
         # 图像生成命令
         from .images import handle_image_generation
@@ -324,16 +330,18 @@ def _main_inner(argv: Optional[list] = None, json_output: bool = False):
             else:
                 print("用法: cli-switch env <model>", file=sys.stderr)
             sys.exit(1)
-        handle_env(model_key, registry, json_output, target_tool)
+        handle_env(model_key, get_registry(quiet=True), json_output, target_tool)
     elif cmd == "switch":
         if cmd_args:
-            handle_switch(cmd_args[0], registry, switcher, json_output, target_tool, custom_hook)
+            handle_switch(
+                cmd_args[0], get_registry(), switcher, json_output, target_tool, custom_hook
+            )
         else:
             print("请指定模型名称或使用 --list 查看所有模型")
             sys.exit(1)
     else:
         # 假设是模型名称，直接切换
-        handle_switch(cmd, registry, switcher, json_output, target_tool, custom_hook)
+        handle_switch(cmd, get_registry(), switcher, json_output, target_tool, custom_hook)
 
 
 def handle_list(registry: ModelRegistry, json_output: bool = False):
