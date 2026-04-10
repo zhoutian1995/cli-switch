@@ -1,0 +1,27 @@
+{
+  "name": "cli-switch",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/cmd/root.js",
+  "bin": {
+    "cli-switch": "dist/cmd/root.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -w -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "commander": "^14.0.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

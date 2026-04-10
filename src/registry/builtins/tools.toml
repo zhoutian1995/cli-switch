@@ -1,0 +1,26 @@
+[claude-code]
+id = "claude-code"
+displayName = "Claude Code"
+adapter = "claude-code"
+command = "claude"
+defaultProfile = "default"
+binaryNames = ["claude"]
+supportedPlatforms = ["darwin", "linux"]
+
+[codex]
+id = "codex"
+displayName = "Codex CLI"
+adapter = "codex"
+command = "codex"
+defaultProfile = "default"
+binaryNames = ["codex"]
+supportedPlatforms = ["darwin", "linux"]
+
+[gemini]
+id = "gemini"
+displayName = "Gemini CLI"
+adapter = "gemini"
+command = "gemini"
+defaultProfile = "default"
+binaryNames = ["gemini"]
+supportedPlatforms = ["darwin", "linux"]

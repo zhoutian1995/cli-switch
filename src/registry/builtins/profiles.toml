@@ -1,0 +1,48 @@
+[claude-code.default]
+tool = "claude-code"
+name = "default"
+description = "Native login mode"
+defaultModel = "sonnet"
+defaultVendor = "anthropic"
+defaultTransport = "native"
+authMode = "login"
+
+[claude-code.default.constraints]
+requiresBinary = true
+requiresEnv = []
+
+[claude-code.api]
+tool = "claude-code"
+name = "api"
+description = "API Key mode"
+defaultModel = "glm-5.1"
+defaultVendor = "zhipu"
+defaultTransport = "api"
+authMode = "api_key"
+
+[claude-code.api.constraints]
+requiresEnv = ["ANTHROPIC_API_KEY"]
+
+[codex.default]
+tool = "codex"
+name = "default"
+description = "Default profile"
+defaultModel = "gpt-5.4"
+defaultVendor = "openai"
+defaultTransport = "native"
+authMode = "api_key"
+
+[codex.default.constraints]
+requiresEnv = ["OPENAI_API_KEY"]
+
+[gemini.default]
+tool = "gemini"
+name = "default"
+description = "Default profile"
+defaultModel = "gemini-3.1-pro"
+defaultVendor = "google"
+defaultTransport = "native"
+authMode = "api_key"
+
+[gemini.default.constraints]
+requiresEnv = ["GOOGLE_API_KEY"]

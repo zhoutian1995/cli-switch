@@ -1,349 +1,333 @@
-# CLI-Switch
+# cli-switch
 
-**🚀 让 OpenClaw Agent 用 CLI 工具写代码** - 告别手写代码，拥抱专业工具
+面向 Agent 和高级 CLI 工作流的多 AI CLI 兼容与运行时编排层。
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+cli-switch 不是新的 AI CLI，也不是本地代理网关。它解决的是另一个问题：
 
----
+> 当上层 Agent、脚本、CI 或自动化系统想调用 Claude Code、Codex CLI、Gemini CLI 这类工具时，如何用统一接口完成模型解析、profile 选择、认证检查、命令构建和结构化输出。
 
-## 💡 你有没有遇到过这样的问题？
+## 为什么做它
 
-**让 OpenClaw 写代码时，它总是"手写"？**
+现在多 AI CLI 集成通常有几个老问题：
 
+- 每个工具的命令格式不同
+- 模型参数、认证方式、环境变量命名不统一
+- 同一个工具有多种运行方式，但大多靠隐式环境变量拼出来
+- 上层脚本很难稳定判断“现在到底能不能跑”
+- 一旦接入多个 CLI，兼容代码很快变成一堆 if-else
+
+cli-switch 的目标，是把这些零散、脆弱、难复用的运行时差异，压缩成一个可以被人和机器共同依赖的公共接口。
+
+## 它是什么
+
+cli-switch 是一个 CLI-first 的兼容层，核心能力包括：
+
+- `resolve`: 解析用户意图，输出统一 runtime spec
+- `env`: 输出环境、配置来源和可执行发现结果
+- `auth status`: 输出统一认证状态与诊断信息
+- `doctor`: 输出综合安装、配置、认证、能力检查结果
+- `list models/providers/profiles`: 输出静态发现信息
+
+## 它不是什么
+
+cli-switch 不做这些事：
+
+- 不做桌面 UI
+- 不做本地代理网关
+- 不做新的 AI CLI 交互壳
+- 不做 50+ provider 大全集
+- 不做自动登录或自动 OAuth 授权流程
+- 不做复杂 round-robin、成本调度、配额平台
+
+一句话说，cli-switch 不是“控制所有 AI 的总控台”，而是“给 Agent 和自动化系统用的多 CLI 运行时兼容层”。
+
+## 目标用户
+
+### 1. Agent 框架作者
+需要统一接入多个 AI CLI，并希望拿到稳定 JSON 输出。
+
+### 2. 高级 CLI 工作流维护者
+需要在 shell、tmux、CI、Makefile、任务编排器里稳定调用多个 AI CLI。
+
+### 3. AI CLI 工具集成开发者
+需要一个独立、可维护、可扩展的兼容层，而不是把工具细节散落到业务代码里。
+
+## 核心设计理念
+
+### 1. JSON First
+所有核心命令优先提供稳定 JSON 输出，先服务机器消费，再兼顾人类可读性。
+
+### 2. Adapter First
+所有工具差异都收敛到 adapter，不把工具细节写进 resolver 核心。
+
+### 3. Profile First
+同一工具的不同运行方式必须显式建模为 profile，而不是靠隐式环境变量拼接。
+
+### 4. 统一接口，不统一底层实现
+对 auth、skills、MCP、tool policy 提供统一抽象，但不强行抹平所有底层实现差异。
+
+### 5. 少而稳优先于大而全
+MVP 先支持少数主流工具，优先验证抽象质量，而不是快速堆广度。
+
+## MVP 命令面
+
+第一阶段围绕这 7 个命令族展开：
+
+1. `resolve`
+2. `env`
+3. `auth status`
+4. `doctor`
+5. `list models`
+6. `list providers`
+7. `list profiles`
+
+所有核心命令要求：
+
+- 支持 `--json`
+- 输出带 `schema_version`
+- 失败时返回结构化错误对象
+
+## 一个最核心的输出：runtime spec
+
+cli-switch 的核心交付物不是一句“帮你切模型”，而是一个结构化的 runtime spec，大致像这样：
+
+```json
+{
+  "schema_version": "v1alpha1",
+  "ok": true,
+  "data": {
+    "request": {
+      "tool": "claude-code",
+      "profile": "default",
+      "model": "sonnet"
+    },
+    "runtime": {
+      "tool": "claude-code",
+      "profile": "default",
+      "adapter": "claude-code",
+      "model": {
+        "input": "sonnet",
+        "resolved_name": "claude-3-7-sonnet",
+        "vendor": "anthropic"
+      },
+      "provider": {
+        "name": "anthropic",
+        "transport": "native"
+      },
+      "auth": {
+        "mode": "login",
+        "status": "ready"
+      },
+      "command": {
+        "program": "claude",
+        "args": ["--model", "claude-3-7-sonnet"],
+        "env": {}
+      },
+      "capabilities": {
+        "mcp": true,
+        "skills": false,
+        "tool_policy": true,
+        "structured_output": true
+      }
+    }
+  },
+  "warnings": [],
+  "diagnostics": []
+}
 ```
-❌ 之前的做法：
-   
-   你: "帮我写一个 FastAPI 项目"
-   
-   Agent: [直接输出代码文本...]
-   
-   问题：
-   - 代码没有经过专业工具审查
-   - 无法利用 CLI 工具的文件操作能力
-   - 效率低，容易出错
-```
 
-**想过让 Agent 用 Claude Code、Codex、Gemini CLI 这些专业工具？**
+这类输出才是上层 Agent、脚本和 CI 真正能依赖的东西。
 
-```
-❌ 但又有新问题：
+## 关键抽象
 
-   Agent: "我用 Codex 执行了任务..."
-   
-   你: "执行完了？结果呢？"
-   
-   Agent: "我再去问一下..." [轮询中...]
-   
-   问题：
-   - Agent 需要不断轮询工具状态
-   - 效率低，Token 浪费
-   - 多终端同时工作会冲突
-```
+### profile
+同一工具的不同运行方式，例如：
+- `default`
+- `api`
+- `router`
+- `oauth`
 
-**CLI-Switch 就是为解决这些问题而生的！**
+### adapter
+每个 AI CLI 一个 adapter，用于吸收具体工具差异，包括：
+- 模型解析
+- 认证检查
+- 命令构建
+- doctor 检查
+- 能力补丁
 
----
+### registry
+统一承载静态定义：
+- tools
+- profiles
+- models
+- providers
+- transports
+- capabilities
 
-## ✨ CLI-Switch 做了什么？
+### auth
+统一抽象认证状态：
+- `mode`: `login | api_key | oauth | none`
+- `status`: `ready | missing | expired | conflict | unsupported | unknown`
 
-```
-✅ 有了 CLI-Switch：
+### capabilities
+MVP 至少覆盖：
+- `mcp`
+- `skills`
+- `tool_policy`
+- `structured_output`
 
-   Agent: cli-switch opus4.6
-   Agent: claude -p "写一个 FastAPI 项目"
-   Agent: [Hook 自动等待完成，无需轮询]
-   Agent: 代码已写好，审查完成！
-   
-   优势：
-   ✓ Agent 一键切换模型
-   ✓ 自动等待 CLI 工具完成
-   ✓ 多 Agent 并发不冲突
-   ✓ 状态可查询、可追溯
-```
+## 架构概览
 
----
+cli-switch 建议保持四层边界：
 
-## 🎯 核心特性
+1. `CLI Layer`
+2. `Core Resolver Layer`
+3. `Registry + Adapter Layer`
+4. `Platform / Runtime Layer`
 
-| 特性 | 说明 | 解决的问题 |
-|------|------|-----------|
-| 🔄 **一键切换** | 33+ 模型，一个命令切换 | 不同任务用不同模型 |
-| 🖥️ **多终端隔离** | 每个 TTY 独立状态 | 多 Agent 同时工作不冲突 |
-| 🔒 **并发安全** | 原子写入，防撕裂 | 状态不会互相覆盖 |
-| 🤖 **Agent 友好** | JSON 输出 + Hook 集成 | Agent 自动化调用 |
-| 👻 **幽灵防御** | PID 验证 | 自动清理无效状态 |
+职责划分：
 
----
+- CLI 层负责参数解析与输出渲染
+- Core 负责请求归一化、profile 选择、模型解析、runtime 组装
+- Adapter 负责具体工具差异
+- Registry 负责静态定义
+- Platform 负责 XDG、PATH、文件系统、权限等平台差异
 
-## 📦 支持的工具和模型
+## 支持范围
 
-### Claude Code (14 个模型)
+### 平台
+- macOS
+- Linux
 
-| 提供商 | 模型 | 适用场景 |
-|-------|------|---------|
-| **Fucheers** | `opus4.6` ⭐ | 写后端/架构代码（首选） |
-| | `opus4.6-thinking` | 需要思考过程的复杂任务 |
-| | `sonnet4.6` | 通用均衡任务 |
-| | `haiku4.5` | 轻量快速任务 |
-| **智谱** | `glm-5.1` | 最新旗舰版 |
-| | `glm-5-turbo` | 高性能推理 |
-| | `glm-5` | 代码专用 |
-| | `glm-4.7` | 平衡 |
-| | `glm-4.6` | 推理模型 |
-| | `glm-4.5` | 标准版 |
-| | `glm-4.5-air` | 轻量版 |
+### MVP 首批工具建议
+- Claude Code
+- Codex CLI
+- Gemini CLI
 
-### Gemini CLI (12 个模型)
+### 暂不支持
+- Windows
+- GUI
+- 本地代理服务
+- 海量 provider 市场
 
-| 提供商 | 模型 | 适用场景 |
-|-------|------|---------|
-| **Google** | `gemini-3.1-pro` ⭐ | 前端/UI 任务（首选） |
-| | `nanobanana` | 图像生成 |
-| | `imagen-4-ultra` | 高级图像 |
-| | `gemini-2.5-flash` | 免费、快速 |
-| | `gemini-2.5-pro` | 高级推理 |
-| **智谱** | `glm-5.1`, `glm-5`, `glm-4.7` 等 | 通用备选 |
+## 示例
 
-### Codex CLI (1 个模型)
-
-| 提供商 | 模型 | 适用场景 |
-|-------|------|---------|
-| **OpenAI** | `gpt-5.2-codex` ⭐ | 代码审查（首选） |
-
----
-
-## 🚀 快速开始
-
-### 安装
+### 1. 解析某个工具的运行时
 
 ```bash
-# 从 GitHub 安装
-git clone https://github.com/zhoutian1995/cli-switch.git
-cd cli-switch
-pipx install -e .
-
-# 或使用安装脚本
-./install.sh
+cli-switch resolve --tool claude-code --model sonnet --json
 ```
 
-### 基本使用
+### 2. 查看某个工具认证状态
 
 ```bash
-# 切换模型
-cli-switch opus4.6
-
-# 查看当前状态
-cli-switch status
-
-# 列出所有模型
-cli-switch list
-
-# JSON 输出（供 Agent 使用）
-cli-switch --json status
+cli-switch auth status --tool codex --json
 ```
 
-### 跨工具切换
+### 3. 查看环境与配置来源
 
 ```bash
-# Claude Code (默认)
-cli-switch opus4.6
-claude -p "写代码"
-
-# Codex CLI (代码审查)
-cli-switch --tool codex gpt-5.2-codex
-codex exec "审查代码"
-
-# Gemini CLI (前端)
-cli-switch --tool gemini gemini-3.1-pro
-gemini -p "写前端"
+cli-switch env --tool gemini --json
 ```
 
----
-
-## 🤖 OpenClaw Agent 使用指南
-
-### 推荐工作流
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    OpenClaw Agent 工作流                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  1️⃣ 写代码                                                  │
-│     cli-switch opus4.6                                      │
-│     claude -p "实现用户认证模块"                             │
-│                                                             │
-│  2️⃣ 审查代码                                                │
-│     cli-switch --tool codex gpt-5.2-codex                   │
-│     codex exec "审查安全性、性能、边界条件"                   │
-│                                                             │
-│  3️⃣ 前端/UI                                                 │
-│     cli-switch --tool gemini gemini-3.1-pro                 │
-│     gemini -p "实现登录页面 UI"                              │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Agent 调用示例
-
-```python
-# Agent 获取当前状态
-status = subprocess.run(["cli-switch", "--json", "status"], capture_output=True)
-data = json.loads(status.stdout)
-print(f"当前模型: {data['model_name']}")
-
-# Agent 切换模型
-subprocess.run(["cli-switch", "opus4.6"])
-
-# Agent 调用 Claude Code
-result = subprocess.run(
-    ["claude", "-p", "写一个 FastAPI 项目"],
-    capture_output=True,
-    text=True
-)
-print(result.stdout)
-```
-
----
-
-## 👤 人类使用：cli-menu
-
-**不喜欢记命令？用 `cli-menu` 交互式菜单！**
-
-```
-╔══════════════════════════════════════════════════════════════╗
-║              AI CLI 工具选择                                  ║
-╠══════════════════════════════════════════════════════════════╣
-║                                                              ║
-║  1) Claude Code CLI                                          ║
-║     支持模型：fucheers(7) + 智谱(7) = 14 个模型              ║
-║                                                              ║
-║  2) Gemini CLI                                               ║
-║     支持模型：智谱(7) + Google(5) = 12 个模型                ║
-║                                                              ║
-║  3) Codex CLI                                                ║
-║     支持模型：OpenAI(1) = 1 个模型                           ║
-║                                                              ║
-║  4) 测试所有工具                                              ║
-║                                                              ║
-║  0) 退出                                                      ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-```
-
-### 使用方法
+### 4. 诊断某个工具是否可用
 
 ```bash
-# 启动菜单
-cli-menu
-
-# 选择工具 → 选择模型 → 自动启动 CLI
+cli-switch doctor --tool claude-code --json
 ```
 
----
-
-## 🛡️ 安全特性
-
-### 终端隔离
-
-```
-Terminal 1 (PID 12345) → ~/.local/state/cli-switch/tty-12345.json
-Terminal 2 (PID 67890) → ~/.local/state/cli-switch/tty-67890.json
-
-# 每个 TTY 独立状态，互不干扰
-# 支持 Tmux 多窗口
-```
-
-### 并发安全
-
-```
-# 原子写入机制
-写入 → 临时文件 → fsync → rename
-
-# 防止配置撕裂
-# 支持多 Agent 同时调用
-```
-
-### 幽灵防御
-
-```
-# PID 绑定验证
-状态文件记录 PID → 检查进程存活 → 自动清理无效状态
-```
-
----
-
-## 📊 性能
-
-| 指标 | 数值 |
-|------|------|
-| 切换延迟 | < 100ms |
-| TTY 检测 | < 10ms |
-| 状态读取 | < 5ms |
-| 并发支持 | 100+ 线程 |
-
----
-
-## 📚 详细文档
-
-| 文档 | 说明 |
-|------|------|
-| [Agent 使用指南](docs/AGENT_GUIDE.md) | 三个 Agent 详细使用说明 |
-| [Agent 规则](docs/AGENT_RULES.md) | Agent 调用规则和最佳实践 |
-| [API 文档](docs/API.md) | 完整 API 文档 |
-| [配置说明](docs/CONFIG.md) | 配置文件说明 |
-| [MCP 配置](docs/MCP.md) | MCP Server 配置 |
-| [OpenClaw 集成](docs/OPENCLAW_INTEGRATION.md) | OpenClaw 集成指南 |
-
----
-
-## 🧪 测试
+### 5. 查看某个工具的 profile
 
 ```bash
-# 运行所有测试
-pytest tests/
-
-# 测试覆盖
-pytest tests/ --cov=cli_switch
-
-# 结果：50 个测试全部通过
+cli-switch list profiles --tool claude-code --json
 ```
 
----
+## 错误模型
 
-## 📝 更新日志
+所有失败都应返回结构化错误，而不是模糊文本。
 
-### v1.1.0 (2026-03-13)
-- ✨ 添加 7 个 Fucheers 模型（Opus 4.6、Sonnet 4.6 等）
-- ✨ 添加 MCP Server 管理功能
-- ✨ 添加 Hook 引擎和防重入保护
-- ✨ 添加 `cli-menu` 交互式菜单
-- 🐛 修复幽灵 TTY 防御逻辑
-- 📚 添加完整的 Agent 使用指南
+示例：
 
-详见 [更新日志](CHANGELOG.md)
+```json
+{
+  "schema_version": "v1alpha1",
+  "ok": false,
+  "error": {
+    "code": "AUTH_MISSING",
+    "message": "未找到所需认证信息",
+    "hint": "请配置所需凭据"
+  },
+  "warnings": [],
+  "diagnostics": []
+}
+```
 
----
+常用错误码包括：
+- `CONFIG_NOT_FOUND`
+- `TOOL_NOT_SUPPORTED`
+- `PROFILE_NOT_FOUND`
+- `MODEL_NOT_FOUND`
+- `AUTH_MISSING`
+- `AUTH_EXPIRED`
+- `BINARY_NOT_FOUND`
+- `RESOLVE_CONFLICT`
+- `PLATFORM_UNSUPPORTED`
 
-## 🤝 贡献
+## 文档结构
 
-欢迎贡献！请查看 [贡献指南](CONTRIBUTING.md)
+当前文档建议按这个顺序阅读：
 
----
+1. `02-产品定义.md`
+2. `03-MVP需求文档.md`
+3. `04-概要设计.md`
+4. `05-详细设计.md`
+5. `07-开发前决策清单.md`
+6. `06-测试方案.md`
+7. `01-竞品分析.md`
 
-## 📄 许可证
+## 当前开发建议
 
-MIT License - 详见 [LICENSE](LICENSE)
+如果准备开始做 P0，建议先拍板这 5 件事：
 
----
+1. 实现语言
+2. 配置文件格式
+3. 首批支持的 3 个工具
+4. `v1alpha1` schema 核心字段
+5. adapter contract 最小接口
 
-## 📮 联系方式
+建议默认：
+- P0 先 TypeScript
+- 配置格式先用 TOML
+- 首批工具先做 Claude Code / Codex CLI / Gemini CLI
 
-- **GitHub Issues**: [提交问题](https://github.com/zhoutian1995/cli-switch/issues)
-- **微信**: 扫码加好友交流
+## 路线图
 
-<div align="center">
-<img src="wechat-qrcode.jpg" width="200">
-</div>
-测试 pre-commit hook
+### P0
+- 配置与 registry 加载
+- 基础类型
+- adapter 接口骨架
+- `list`
+- `resolve --json`
+- `auth status --json`
+- schema 与错误码
+- 核心单测和 contract tests
+
+### P1
+- `doctor --json`
+- `env --json`
+- 文本 renderer 优化
+- macOS / Linux E2E
+- overlay merge
+- capability patch
+
+### P2
+- 更多 adapter
+- 更细的 capability 协商
+- profile 继承/组合
+- 用户自定义 registry 插件机制
+
+## 一句话总结
+
+cli-switch 的价值，不在于“帮用户切一下模型”，而在于：
+
+**把多 AI CLI 复杂、零散、难维护的运行时差异，压缩成一个可依赖、可诊断、可扩展的公共接口。**
