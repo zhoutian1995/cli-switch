@@ -1,4 +1,4 @@
-import type { DoctorCheck, PlatformService } from '../../adapters/types.js';
+import type { CliAdapter, DoctorCheck, PlatformService } from '../../adapters/types.js';
 import { inspectAuth } from '../auth/auth-inspector.js';
 import type { Diagnostic, EffectiveRegistry, ProfileDefinition, ToolDefinition } from '../../types/index.js';
 
@@ -288,7 +288,11 @@ function createModelCheck(profile: ProfileDefinition, registryModels: Record<str
   };
 }
 
-export function createDoctorService(platform: PlatformService, registry: EffectiveRegistry): DoctorService {
+export function createDoctorService(
+  platform: PlatformService,
+  registry: EffectiveRegistry,
+  adapters: Record<string, CliAdapter> = {},
+): DoctorService {
   return {
     run(tool: ToolDefinition, profile: ProfileDefinition): DoctorResult {
       const warnings: string[] = [];
@@ -303,6 +307,12 @@ export function createDoctorService(platform: PlatformService, registry: Effecti
 
       diagnostics.push(...binary.diagnostics, ...profileCheck.diagnostics, ...auth.diagnostics, ...model.diagnostics);
       warnings.push(...auth.warnings, ...model.warnings);
+
+      const adapter = adapters[tool.adapter];
+      if (adapter) {
+        const adapterChecks = adapter.doctor({ tool, profile, registry, platform });
+        checks.push(...adapterChecks);
+      }
 
       return {
         summary: summarizeChecks(checks),

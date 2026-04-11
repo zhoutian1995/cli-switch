@@ -52,38 +52,41 @@ function collectPatch(
   return mergeCapabilities(capabilities, patch.capabilities);
 }
 
+function createResolverError(code: string, message: string, details?: Record<string, unknown>): Error & { code: string; details?: Record<string, unknown> } {
+  const error = new Error(message) as Error & { code: string; details?: Record<string, unknown> };
+  error.code = code;
+  if (details) {
+    error.details = details;
+  }
+  return error;
+}
+
 function validateResolveContracts(
   request: NormalizedResolveRequest,
-  profile: { requiredCapabilities?: string[]; constraints?: { disallowCapabilities?: string[] } },
+  profile: { requiredCapabilities?: string[]; constraints?: { disallowCapabilities?: string[]; supportedPlatforms?: string[]; requiresBinary?: boolean; requiresEnv?: string[] } },
   modelCapabilities: string[],
 ): void {
   const disallowed = profile.constraints?.disallowCapabilities ?? [];
   const requestedDisallowed = request.capabilities.filter((capability) => disallowed.includes(capability));
   if (requestedDisallowed.length > 0) {
-    throw Object.assign(new Error(`Requested capabilities are disallowed by profile: ${requestedDisallowed.join(', ')}`), {
-      code: 'RESOLVE_CONFLICT',
-      details: {
-        tool: request.tool,
-        profile: request.profile,
-        requestedCapabilities: request.capabilities,
-        disallowCapabilities: disallowed,
-        conflict: requestedDisallowed,
-      },
+    throw createResolverError('RESOLVE_CONFLICT', `Requested capabilities are disallowed by profile: ${requestedDisallowed.join(', ')}`, {
+      tool: request.tool,
+      profile: request.profile,
+      requestedCapabilities: request.capabilities,
+      disallowCapabilities: disallowed,
+      conflict: requestedDisallowed,
     });
   }
 
   const required = profile.requiredCapabilities ?? [];
   const missingRequired = required.filter((capability) => !modelCapabilities.includes(capability));
   if (missingRequired.length > 0) {
-    throw Object.assign(new Error(`Required capabilities are not satisfied by resolved model: ${missingRequired.join(', ')}`), {
-      code: 'RESOLVE_CONFLICT',
-      details: {
-        tool: request.tool,
-        profile: request.profile,
-        requiredCapabilities: required,
-        modelCapabilities,
-        missingRequiredCapabilities: missingRequired,
-      },
+    throw createResolverError('RESOLVE_CONFLICT', `Required capabilities are not satisfied by resolved model: ${missingRequired.join(', ')}`, {
+      tool: request.tool,
+      profile: request.profile,
+      requiredCapabilities: required,
+      modelCapabilities,
+      missingRequiredCapabilities: missingRequired,
     });
   }
 }
@@ -128,6 +131,44 @@ function findExecutableSync(names: string[]): string | null {
   }
 
   return null;
+}
+
+function validatePlatformConstraints(
+  request: NormalizedResolveRequest,
+  tool: { supportedPlatforms: string[]; binaryNames: string[] },
+  profile: { constraints?: { supportedPlatforms?: string[]; requiresBinary?: boolean; requiresEnv?: string[] } },
+  platform: PlatformService,
+): void {
+  const currentPlatform = platform.getPlatform();
+  if (!tool.supportedPlatforms.includes(currentPlatform)) {
+    throw createResolverError('PLATFORM_UNSUPPORTED', `Tool does not support platform: ${currentPlatform}`, {
+      tool: request.tool,
+      profile: request.profile,
+      platform: currentPlatform,
+      supportedPlatforms: tool.supportedPlatforms,
+    });
+  }
+
+  const profilePlatforms = profile.constraints?.supportedPlatforms ?? [];
+  if (profilePlatforms.length > 0 && !profilePlatforms.includes(currentPlatform)) {
+    throw createResolverError('PLATFORM_UNSUPPORTED', `Profile does not support platform: ${currentPlatform}`, {
+      tool: request.tool,
+      profile: request.profile,
+      platform: currentPlatform,
+      supportedPlatforms: profilePlatforms,
+    });
+  }
+
+  if (profile.constraints?.requiresBinary) {
+    const binary = platform.findExecutable(tool.binaryNames);
+    if (!binary) {
+      throw createResolverError('BINARY_NOT_FOUND', `Required binary not found for tool: ${request.tool}`, {
+        tool: request.tool,
+        profile: request.profile,
+        binaryNames: tool.binaryNames,
+      });
+    }
+  }
 }
 
 function createPlatformService(): PlatformService {
@@ -197,9 +238,9 @@ export function createResolverService(
         }
 
         const profile = selectProfile(normalizedRequest.tool, normalizedRequest.profile, registry);
+        validatePlatformConstraints(normalizedRequest, tool, profile, platform);
         const { model, warnings: modelWarnings } = resolveModel(normalizedRequest, profile, registry);
         warnings.push(...modelWarnings);
-        validateResolveContracts(normalizedRequest, profile, model.capabilities);
 
         const adapter = adapters[tool.adapter];
         if (!adapter) {
@@ -224,6 +265,7 @@ export function createResolverService(
           transport: normalizedRequest.transport ?? adapterModel.transport ?? model.transport,
           capabilities: adapterModel.capabilities.length > 0 ? adapterModel.capabilities : model.capabilities,
         };
+        validateResolveContracts(normalizedRequest, profile, finalModel.capabilities);
 
         const auth = adapter.resolve_auth({
           tool,

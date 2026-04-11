@@ -5,14 +5,11 @@ import {
   codexAdapter,
   geminiAdapter,
 } from '../src/adapters/index.js';
-import { createAuthService } from '../src/core/auth/index.js';
-import { createDoctorService } from '../src/core/doctor/index.js';
 import { createResolverService } from '../src/core/resolver/index.js';
-import { loadBuiltins, createRegistryService } from '../src/registry/index.js';
+import { loadBuiltins } from '../src/registry/index.js';
 import { renderJson, renderResolveResult } from '../src/renderers/index.js';
 import {
   EXIT_CODES,
-  createPlatformService,
   printJson,
   toErrorEnvelope,
 } from './_shared.js';
@@ -33,16 +30,12 @@ export function createResolveCommand(): Command {
     .option('--json', 'output JSON')
     .action((options: ResolveOptions) => {
       const registry = loadBuiltins();
-      createRegistryService(registry);
-      const platform = createPlatformService();
       const adapters = {
         [claudeCodeAdapter.id()]: claudeCodeAdapter,
         [codexAdapter.id()]: codexAdapter,
         [geminiAdapter.id()]: geminiAdapter,
       };
       const resolver = createResolverService(registry, adapters);
-      createAuthService(platform);
-      createDoctorService(platform, registry);
 
       const result = resolver.resolve({
         tool: options.tool,

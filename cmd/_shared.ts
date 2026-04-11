@@ -147,7 +147,7 @@ export function createCommandContext(): CommandContext {
     platform,
     resolver: createResolverService(registry, adapters),
     authService: createAuthService(platform),
-    doctorService: createDoctorService(platform, registry),
+    doctorService: createDoctorService(platform, registry, adapters),
   };
 }
 
