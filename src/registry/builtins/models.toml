@@ -5,28 +5,28 @@ family = "claude"
 vendor = "anthropic"
 capabilities = ["chat", "code", "tool_use"]
 
-[glm-5-1]
+["glm-5.1"]
 alias = "glm-5.1"
 resolvedName = "glm-5.1"
 family = "glm"
 vendor = "zhipu"
 capabilities = ["chat", "code"]
 
-[glm-5]
+["glm-5"]
 alias = "glm-5"
 resolvedName = "glm-5"
 family = "glm"
 vendor = "zhipu"
 capabilities = ["chat", "code"]
 
-[gpt-5-4]
+["gpt-5.4"]
 alias = "gpt-5.4"
 resolvedName = "gpt-5.4"
 family = "gpt"
 vendor = "openai"
 capabilities = ["chat", "code", "reasoning"]
 
-[gemini-3-1-pro]
+["gemini-3.1-pro"]
 alias = "gemini-3.1-pro"
 resolvedName = "gemini-3.1-pro-preview"
 family = "gemini"

@@ -52,6 +52,42 @@ function collectPatch(
   return mergeCapabilities(capabilities, patch.capabilities);
 }
 
+function validateResolveContracts(
+  request: NormalizedResolveRequest,
+  profile: { requiredCapabilities?: string[]; constraints?: { disallowCapabilities?: string[] } },
+  modelCapabilities: string[],
+): void {
+  const disallowed = profile.constraints?.disallowCapabilities ?? [];
+  const requestedDisallowed = request.capabilities.filter((capability) => disallowed.includes(capability));
+  if (requestedDisallowed.length > 0) {
+    throw Object.assign(new Error(`Requested capabilities are disallowed by profile: ${requestedDisallowed.join(', ')}`), {
+      code: 'RESOLVE_CONFLICT',
+      details: {
+        tool: request.tool,
+        profile: request.profile,
+        requestedCapabilities: request.capabilities,
+        disallowCapabilities: disallowed,
+        conflict: requestedDisallowed,
+      },
+    });
+  }
+
+  const required = profile.requiredCapabilities ?? [];
+  const missingRequired = required.filter((capability) => !modelCapabilities.includes(capability));
+  if (missingRequired.length > 0) {
+    throw Object.assign(new Error(`Required capabilities are not satisfied by resolved model: ${missingRequired.join(', ')}`), {
+      code: 'RESOLVE_CONFLICT',
+      details: {
+        tool: request.tool,
+        profile: request.profile,
+        requiredCapabilities: required,
+        modelCapabilities,
+        missingRequiredCapabilities: missingRequired,
+      },
+    });
+  }
+}
+
 function isExecutable(filePath: string): boolean {
   try {
     accessSync(filePath, constants.X_OK);
@@ -163,6 +199,7 @@ export function createResolverService(
         const profile = selectProfile(normalizedRequest.tool, normalizedRequest.profile, registry);
         const { model, warnings: modelWarnings } = resolveModel(normalizedRequest, profile, registry);
         warnings.push(...modelWarnings);
+        validateResolveContracts(normalizedRequest, profile, model.capabilities);
 
         const adapter = adapters[tool.adapter];
         if (!adapter) {

@@ -45,23 +45,18 @@ export function resolveModel(
   const registryService = createRegistryService(registry);
   const definition = registryService.getModel(requestedModel);
 
-  if (definition) {
-    return {
-      model: toResolvedModel(requestedModel, definition),
-      warnings: definition.deprecated
-        ? [`Model alias "${requestedModel}" is deprecated.`]
-        : [],
-    };
+  if (!definition) {
+    throw createResolverError('MODEL_NOT_FOUND', `Model not found: ${requestedModel}`, {
+      tool: request.tool,
+      profile: profile.name,
+      model: requestedModel,
+    });
   }
 
   return {
-    model: {
-      input: requestedModel,
-      resolvedName: requestedModel,
-      family: 'unknown',
-      vendor: 'unknown',
-      capabilities: [],
-    },
-    warnings: [`Model alias "${requestedModel}" is not defined in registry, using fallback resolution.`],
+    model: toResolvedModel(requestedModel, definition),
+    warnings: definition.deprecated
+      ? [`Model alias "${requestedModel}" is deprecated.`]
+      : [],
   };
 }
