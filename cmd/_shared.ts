@@ -12,7 +12,7 @@ import { createAuthService } from '../src/core/auth/index.js';
 import { createDoctorService, type DoctorResult as CoreDoctorResult } from '../src/core/doctor/index.js';
 import { createResolverService, type ResolverService } from '../src/core/resolver/index.js';
 import { readEnv, resolvePaths } from '../src/platform/index.js';
-import { createRegistryService, loadBuiltins, type RegistryService } from '../src/registry/index.js';
+import { createRegistryService, loadBuiltins, loadUserOverrides, mergeRegistry, type RegistryService } from '../src/registry/index.js';
 import { renderJson } from '../src/renderers/index.js';
 import type {
   Diagnostic,
@@ -131,9 +131,11 @@ export function createPlatformService(): PlatformService {
 }
 
 export function createCommandContext(): CommandContext {
-  const registry = loadBuiltins();
-  const registryService = createRegistryService(registry);
+  const builtins = loadBuiltins();
   const platform = createPlatformService();
+  const overrides = loadUserOverrides(platform.resolvePaths().configDir);
+  const registry = mergeRegistry(builtins, overrides);
+  const registryService = createRegistryService(registry);
   const adapters = {
     [claudeCodeAdapter.id()]: claudeCodeAdapter,
     [codexAdapter.id()]: codexAdapter,
@@ -187,6 +189,8 @@ export function createJsonEnvelope<T>(payload: Omit<JsonEnvelope<T>, 'schema_ver
     diagnostics: payload.diagnostics ?? [],
   };
 }
+
+export { renderJson };
 
 export function printJson<T>(payload: Omit<JsonEnvelope<T>, 'schema_version'>): void {
   console.log(renderJson(createJsonEnvelope(payload)));

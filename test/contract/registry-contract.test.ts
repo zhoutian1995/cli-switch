@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-import { loadBuiltins } from '../../src/registry/index.js';
+import { loadBuiltins, loadUserOverrides, mergeRegistry } from '../../src/registry/index.js';
 
 const registry = loadBuiltins();
 
@@ -43,5 +46,35 @@ describe('registry contract', () => {
         ).toBeDefined();
       }
     }
+  });
+
+  it('loads and merges user overrides from config dir', () => {
+    const configDir = mkdtempSync(join(tmpdir(), 'cli-switch-config-'));
+    writeFileSync(
+      join(configDir, 'registry.override.toml'),
+      [
+        '[models.custom-model]',
+        'alias = "custom-model"',
+        'resolvedName = "custom-model-v1"',
+        'family = "custom"',
+        'vendor = "custom-vendor"',
+        'capabilities = ["chat"]',
+        '',
+        '[profiles.codex.default]',
+        'tool = "codex"',
+        'name = "default"',
+        'description = "Override Default profile"',
+        'defaultModel = "custom-model"',
+        'authMode = "api_key"',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const overrides = loadUserOverrides(configDir);
+    const merged = mergeRegistry(loadBuiltins(), overrides);
+
+    expect(merged.models['custom-model']).toBeDefined();
+    expect(merged.models['custom-model']?.resolvedName).toBe('custom-model-v1');
+    expect(merged.profiles['codex:default']?.defaultModel).toBe('custom-model');
   });
 });

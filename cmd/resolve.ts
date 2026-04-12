@@ -6,10 +6,11 @@ import {
   geminiAdapter,
 } from '../src/adapters/index.js';
 import { createResolverService } from '../src/core/resolver/index.js';
-import { loadBuiltins } from '../src/registry/index.js';
+import { loadBuiltins, loadUserOverrides, mergeRegistry } from '../src/registry/index.js';
 import { renderJson, renderResolveResult } from '../src/renderers/index.js';
 import {
   EXIT_CODES,
+  createPlatformService,
   printJson,
   toErrorEnvelope,
 } from './_shared.js';
@@ -18,6 +19,9 @@ interface ResolveOptions {
   tool: string;
   profile?: string;
   model?: string;
+  provider?: string;
+  vendor?: string;
+  transport?: string;
   json?: boolean;
 }
 
@@ -27,9 +31,15 @@ export function createResolveCommand(): Command {
     .requiredOption('--tool <tool>', 'tool id to resolve')
     .option('--profile <profile>', 'profile name')
     .option('--model <model>', 'model alias or canonical model name')
+    .option('--provider <provider>', 'provider id')
+    .option('--vendor <vendor>', 'vendor id')
+    .option('--transport <transport>', 'transport id')
     .option('--json', 'output JSON')
     .action((options: ResolveOptions) => {
-      const registry = loadBuiltins();
+      const builtins = loadBuiltins();
+      const platform = createPlatformService();
+      const overrides = loadUserOverrides(platform.resolvePaths().configDir);
+      const registry = mergeRegistry(builtins, overrides);
       const adapters = {
         [claudeCodeAdapter.id()]: claudeCodeAdapter,
         [codexAdapter.id()]: codexAdapter,
@@ -41,6 +51,9 @@ export function createResolveCommand(): Command {
         tool: options.tool,
         profile: options.profile,
         model: options.model,
+        provider: options.provider,
+        vendor: options.vendor,
+        transport: options.transport,
       });
 
       if (options.json) {

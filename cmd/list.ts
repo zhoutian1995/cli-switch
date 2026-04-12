@@ -8,7 +8,7 @@ import {
 import { createAuthService } from '../src/core/auth/index.js';
 import { createDoctorService } from '../src/core/doctor/index.js';
 import { createResolverService } from '../src/core/resolver/index.js';
-import { loadBuiltins, createRegistryService } from '../src/registry/index.js';
+import { loadBuiltins, loadUserOverrides, mergeRegistry, createRegistryService } from '../src/registry/index.js';
 import { renderJson, renderList } from '../src/renderers/index.js';
 import {
   EXIT_CODES,
@@ -33,9 +33,11 @@ function filterByTool<T extends { tools?: string[]; tool?: string }>(items: T[],
 }
 
 function createListDependencies() {
-  const registry = loadBuiltins();
-  const registryService = createRegistryService(registry);
+  const builtins = loadBuiltins();
   const platform = createPlatformService();
+  const overrides = loadUserOverrides(platform.resolvePaths().configDir);
+  const registry = mergeRegistry(builtins, overrides);
+  const registryService = createRegistryService(registry);
   const adapters = {
     [claudeCodeAdapter.id()]: claudeCodeAdapter,
     [codexAdapter.id()]: codexAdapter,
@@ -43,7 +45,7 @@ function createListDependencies() {
   };
   createResolverService(registry, adapters);
   createAuthService(platform);
-  createDoctorService(platform, registry);
+  createDoctorService(platform, registry, adapters);
 
   return { registry, registryService };
 }

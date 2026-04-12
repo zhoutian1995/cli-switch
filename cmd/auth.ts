@@ -8,7 +8,7 @@ import {
 import { createAuthService } from '../src/core/auth/index.js';
 import { createDoctorService } from '../src/core/doctor/index.js';
 import { createResolverService } from '../src/core/resolver/index.js';
-import { loadBuiltins, createRegistryService } from '../src/registry/index.js';
+import { loadBuiltins, loadUserOverrides, mergeRegistry, createRegistryService } from '../src/registry/index.js';
 import { renderAuthResult, renderJson } from '../src/renderers/index.js';
 import {
   EXIT_CODES,
@@ -34,9 +34,11 @@ export function createAuthCommand(): Command {
     .option('--json', 'output JSON')
     .action((options: AuthStatusOptions) => {
       try {
-        const registry = loadBuiltins();
-        const registryService = createRegistryService(registry);
+        const builtins = loadBuiltins();
         const platform = createPlatformService();
+        const overrides = loadUserOverrides(platform.resolvePaths().configDir);
+        const registry = mergeRegistry(builtins, overrides);
+        const registryService = createRegistryService(registry);
         const adapters = {
           [claudeCodeAdapter.id()]: claudeCodeAdapter,
           [codexAdapter.id()]: codexAdapter,
@@ -44,7 +46,7 @@ export function createAuthCommand(): Command {
         };
         createResolverService(registry, adapters);
         const authService = createAuthService(platform);
-        createDoctorService(platform, registry);
+        createDoctorService(platform, registry, adapters);
 
         const tool = findToolOrThrow(registryService, options.tool);
         const profile = findProfileOrThrow(registryService, tool, options.profile);

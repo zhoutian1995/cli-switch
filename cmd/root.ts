@@ -10,6 +10,7 @@ import { createDoctorCommand } from './doctor.js';
 import { createEnvCommand } from './env.js';
 import { createListCommand } from './list.js';
 import { createResolveCommand } from './resolve.js';
+import { EXIT_CODES, renderJson, toErrorEnvelope } from './_shared.js';
 
 type PackageJson = {
   version: string;
@@ -45,7 +46,19 @@ try {
   await program.parseAsync(process.argv);
 } catch (error) {
   if (error instanceof CommanderError) {
-    process.exitCode = error.code.startsWith('commander.') ? 2 : error.exitCode;
+    const wantsJson = process.argv.includes('--json');
+    if (wantsJson) {
+      console.log(
+        renderJson(
+          toErrorEnvelope({
+            code: 'INPUT_ERROR',
+            message: error.message,
+            hint: '请检查命令参数是否正确。',
+          }),
+        ),
+      );
+    }
+    process.exitCode = error.code.startsWith('commander.') ? EXIT_CODES.input : error.exitCode;
   } else {
     process.exitCode = 1;
     throw error;

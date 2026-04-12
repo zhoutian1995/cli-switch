@@ -25,8 +25,16 @@ function runJson(args: string[], env?: NodeJS.ProcessEnv) {
 }
 
 describe('CLI JSON golden', () => {
+  const runCliJson = (args: string[], env?: NodeJS.ProcessEnv) => {
+    execFileSync('npm', ['run', 'build'], {
+      cwd: PROJECT_ROOT,
+      encoding: 'utf8',
+      env: { ...process.env, ...env },
+    });
+    return runJson(args, env);
+  };
   it('resolve --json returns schema envelope and runtime', () => {
-    const result = runJson(['resolve', '--tool', 'claude-code', '--model', 'sonnet', '--json']);
+    const result = runCliJson(['resolve', '--tool', 'claude-code', '--model', 'sonnet', '--json']);
     expect(result.exitCode).toBe(0);
     expect(result.body.schema_version).toBe('v1alpha1');
     expect(result.body.ok).toBe(true);
@@ -36,7 +44,7 @@ describe('CLI JSON golden', () => {
   });
 
   it('auth status --json returns schema envelope and auth payload', () => {
-    const result = runJson(['auth', 'status', '--tool', 'codex', '--json']);
+    const result = runCliJson(['auth', 'status', '--tool', 'codex', '--json']);
     expect(result.exitCode).toBe(0);
     expect(result.body.schema_version).toBe('v1alpha1');
     expect(result.body.data.tool).toBe('codex');
@@ -44,7 +52,7 @@ describe('CLI JSON golden', () => {
   });
 
   it('doctor --json returns items and schema envelope with environment exit code', () => {
-    const result = runJson(['doctor', '--json']);
+    const result = runCliJson(['doctor', '--json']);
     expect(result.exitCode).toBe(3);
     expect(result.body.schema_version).toBe('v1alpha1');
     expect(Array.isArray(result.body.data.items)).toBe(true);
@@ -52,10 +60,18 @@ describe('CLI JSON golden', () => {
   });
 
   it('resolve unknown model returns structured MODEL_NOT_FOUND error', () => {
-    const result = runJson(['resolve', '--tool', 'claude-code', '--model', 'unknown-model', '--json']);
+    const result = runCliJson(['resolve', '--tool', 'claude-code', '--model', 'unknown-model', '--json']);
     expect(result.exitCode).toBe(4);
     expect(result.body.schema_version).toBe('v1alpha1');
     expect(result.body.ok).toBe(false);
     expect(result.body.error.code).toBe('MODEL_NOT_FOUND');
+  });
+
+  it('resolve conflicting provider/vendor returns structured RESOLVE_CONFLICT error', () => {
+    const result = runCliJson(['resolve', '--tool', 'claude-code', '--model', 'sonnet', '--provider', 'anthropic', '--vendor', 'openai', '--json']);
+    expect(result.exitCode).toBe(4);
+    expect(result.body.schema_version).toBe('v1alpha1');
+    expect(result.body.ok).toBe(false);
+    expect(result.body.error.code).toBe('RESOLVE_CONFLICT');
   });
 });

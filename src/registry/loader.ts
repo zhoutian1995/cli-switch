@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from '@iarna/toml';
 
@@ -10,6 +10,7 @@ import type {
   ProfileDefinition,
   ProviderDefinition,
   ToolDefinition,
+  TransportDefinition,
 } from '../types/registry.js';
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
@@ -26,6 +27,7 @@ const BUILTIN_FILES = {
   tools: resolve(BUILTINS_DIR, 'tools.toml'),
   profiles: resolve(BUILTINS_DIR, 'profiles.toml'),
   providers: resolve(BUILTINS_DIR, 'providers.toml'),
+  transports: resolve(BUILTINS_DIR, 'transports.toml'),
 } as const;
 
 const DEFAULT_PROFILE_CAPABILITIES: CapabilityFlags = {
@@ -38,6 +40,14 @@ const DEFAULT_PROFILE_CAPABILITIES: CapabilityFlags = {
 type TomlRecord = Record<string, unknown>;
 
 type ParsedRegistryToml<T> = Record<string, T>;
+
+interface RegistryOverridesToml {
+  tools?: ParsedRegistryToml<ToolDefinition>;
+  profiles?: ParsedRegistryToml<ProfileDefinition>;
+  models?: ParsedRegistryToml<ModelDefinition>;
+  providers?: ParsedRegistryToml<ProviderDefinition>;
+  transports?: Record<string, unknown>;
+}
 
 function readTomlFile<T>(path: string): ParsedRegistryToml<T> {
   let raw = '';
@@ -113,12 +123,33 @@ export function loadBuiltins(): EffectiveRegistry {
     readTomlFile<ProfileDefinition>(BUILTIN_FILES.profiles),
   );
   const providers = readTomlFile<ProviderDefinition>(BUILTIN_FILES.providers);
+  const transports = readTomlFile<TransportDefinition>(BUILTIN_FILES.transports);
 
   return {
     tools,
     profiles,
     models,
     providers,
-    transports: {},
+    transports,
   };
+}
+
+function normalizeOverrides(overrides: RegistryOverridesToml): Partial<EffectiveRegistry> {
+  return {
+    tools: overrides.tools ?? {},
+    profiles: overrides.profiles ? normalizeProfiles(overrides.profiles) : {},
+    models: overrides.models ?? {},
+    providers: overrides.providers ?? {},
+    transports: (overrides.transports as EffectiveRegistry['transports'] | undefined) ?? {},
+  };
+}
+
+export function loadUserOverrides(configDir: string): Partial<EffectiveRegistry> {
+  const overridePath = join(configDir, 'registry.override.toml');
+  if (!existsSync(overridePath)) {
+    return {};
+  }
+
+  const overrides = readTomlFile<RegistryOverridesToml>(overridePath) as unknown as RegistryOverridesToml;
+  return normalizeOverrides(overrides);
 }

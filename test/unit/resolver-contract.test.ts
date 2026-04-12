@@ -110,4 +110,39 @@ describe('resolver contract', () => {
     expect(result.ok).toBe(true);
     expect(result.runtime?.model.capabilities).toContain('function_calling');
   });
+
+  it('fails when requested provider does not support the tool', () => {
+    const resolver = createResolverService(registry, adapters);
+    const result = resolver.resolve({
+      tool: 'claude-code',
+      provider: 'google',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]?.code).toBe('RESOLVE_CONFLICT');
+  });
+
+  it('fails when requested vendor conflicts with resolved model vendor', () => {
+    const resolver = createResolverService(registry, adapters);
+    const result = resolver.resolve({
+      tool: 'claude-code',
+      model: 'sonnet',
+      vendor: 'openai',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]?.code).toBe('RESOLVE_CONFLICT');
+  });
+
+  it('fails when requested transport conflicts with provider transports', () => {
+    const resolver = createResolverService(registry, adapters);
+    const result = resolver.resolve({
+      tool: 'claude-code',
+      provider: 'zhipu',
+      transport: 'native',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]?.code).toBe('RESOLVE_CONFLICT');
+  });
 });

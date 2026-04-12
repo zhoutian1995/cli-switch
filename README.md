@@ -242,6 +242,18 @@ cli-switch doctor --tool claude-code --json
 cli-switch list profiles --tool claude-code --json
 ```
 
+## 配置与 schema
+
+当前仓库已提供第一版 schema 雏形：
+
+- `schema/config.v1alpha1.json`
+- `schema/registry.v1alpha1.json`
+
+当前用户覆盖配置从 XDG config 目录读取：
+
+- `<configDir>/registry.override.toml`
+- 默认通常是 `~/.config/cli-switch/registry.override.toml`
+
 ## 错误模型
 
 所有失败都应返回结构化错误，而不是模糊文本。

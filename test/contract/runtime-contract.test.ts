@@ -46,4 +46,32 @@ describe('runtime contract', () => {
       ).toBe(true);
     }
   });
+
+  it('provider transports should exist in registry.transports', () => {
+    for (const [providerId, provider] of Object.entries(registry.providers)) {
+      for (const transportId of provider.transports) {
+        expect(
+          registry.transports[transportId],
+          `${providerId} -> transport ${transportId} is missing from registry.transports`,
+        ).toBeDefined();
+      }
+    }
+  });
+
+  it('provider authModes should be supported by at least one declared transport', () => {
+    for (const [providerId, provider] of Object.entries(registry.providers)) {
+      for (const authMode of provider.authModes) {
+        const supportedBySomeTransport = provider.transports.some((transportId) => {
+          const transport = registry.transports[transportId];
+          expect(transport, `${providerId} -> transport ${transportId} missing`).toBeDefined();
+          return transport?.authModes.includes(authMode) ?? false;
+        });
+
+        expect(
+          supportedBySomeTransport,
+          `${providerId} -> authMode ${authMode} is not supported by any declared transport`,
+        ).toBe(true);
+      }
+    }
+  });
 });

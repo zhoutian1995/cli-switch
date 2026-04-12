@@ -1,0 +1,14 @@
+[native]
+id = "native"
+description = "Native CLI transport"
+authModes = ["login", "api_key", "none"]
+
+[api]
+id = "api"
+description = "Direct API transport"
+authModes = ["api_key", "oauth"]
+
+[oauth]
+id = "oauth"
+description = "OAuth-based transport"
+authModes = ["oauth"]
