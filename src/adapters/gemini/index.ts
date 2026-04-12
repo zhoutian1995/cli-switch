@@ -35,24 +35,24 @@ function checkAuth(input: ResolveAuthInput): AuthResult {
   const mode = input.profile.authMode;
 
   if (mode === 'api_key') {
-    const apiKey = input.platform.readEnv('GOOGLE_API_KEY');
+    const apiKey = input.platform.readEnv('GEMINI_API_KEY');
     if (apiKey) {
       return {
         mode: 'api_key',
         status: 'ready',
-        required: ['GOOGLE_API_KEY'],
-        detected: ['GOOGLE_API_KEY'],
+        required: ['GEMINI_API_KEY'],
+        detected: ['GEMINI_API_KEY'],
         source: 'env',
-        hint: 'GOOGLE_API_KEY is set.',
+        hint: 'GEMINI_API_KEY is set.',
       };
     }
     return {
       mode: 'api_key',
       status: 'missing',
-      required: ['GOOGLE_API_KEY'],
+      required: ['GEMINI_API_KEY'],
       detected: [],
       source: null,
-      hint: 'Set GOOGLE_API_KEY environment variable.',
+      hint: 'Set GEMINI_API_KEY environment variable.',
     };
   }
 
