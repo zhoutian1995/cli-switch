@@ -1,4 +1,4 @@
-[sonnet]
+["sonnet"]
 alias = "sonnet"
 resolvedName = "claude-3-7-sonnet"
 family = "claude"
