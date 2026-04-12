@@ -16,6 +16,7 @@ import { normalize } from './request-normalizer.js';
 import { selectProfile } from './profile-selector.js';
 import { resolveModel } from './model-resolver.js';
 import { buildRuntimeSpec } from './runtime-builder.js';
+import { createResolverError } from './utils.js';
 
 export interface ResolverService {
   resolve(request: ResolveRequest): ResolveResult;
@@ -50,15 +51,6 @@ function collectPatch(
     diagnostics.push(...patch.diagnostics);
   }
   return mergeCapabilities(capabilities, patch.capabilities);
-}
-
-function createResolverError(code: string, message: string, details?: Record<string, unknown>): Error & { code: string; details?: Record<string, unknown> } {
-  const error = new Error(message) as Error & { code: string; details?: Record<string, unknown> };
-  error.code = code;
-  if (details) {
-    error.details = details;
-  }
-  return error;
 }
 
 function validateResolveContracts(
@@ -171,6 +163,90 @@ function validatePlatformConstraints(
   }
 }
 
+function validateProviderContracts(
+  request: NormalizedResolveRequest,
+  profile: { defaultProvider?: string; defaultVendor?: string; defaultTransport?: string },
+  finalModel: { provider?: string; vendor: string; transport?: string },
+  registry: EffectiveRegistry,
+): void {
+  const providerName = request.provider ?? finalModel.provider ?? profile.defaultProvider;
+  const vendorName = request.vendor ?? finalModel.vendor ?? profile.defaultVendor;
+  const transportName = request.transport ?? finalModel.transport ?? profile.defaultTransport;
+
+  if (request.provider) {
+    const provider = registry.providers[request.provider];
+    if (!provider) {
+      throw createResolverError('RESOLVE_CONFLICT', `Requested provider is not defined: ${request.provider}`, {
+        tool: request.tool,
+        profile: request.profile,
+        provider: request.provider,
+      });
+    }
+
+    if (!provider.supportedTools.includes(request.tool)) {
+      throw createResolverError('RESOLVE_CONFLICT', `Requested provider does not support tool: ${request.provider}`, {
+        tool: request.tool,
+        profile: request.profile,
+        provider: request.provider,
+        supportedTools: provider.supportedTools,
+      });
+    }
+
+    if (vendorName && provider.vendor !== vendorName) {
+      throw createResolverError('RESOLVE_CONFLICT', `Requested vendor conflicts with provider: ${vendorName} vs ${provider.vendor}`, {
+        tool: request.tool,
+        profile: request.profile,
+        provider: request.provider,
+        vendor: vendorName,
+        providerVendor: provider.vendor,
+      });
+    }
+
+    if (transportName && !provider.transports.includes(transportName)) {
+      throw createResolverError('RESOLVE_CONFLICT', `Requested transport is not supported by provider: ${transportName}`, {
+        tool: request.tool,
+        profile: request.profile,
+        provider: request.provider,
+        transport: transportName,
+        supportedTransports: provider.transports,
+      });
+    }
+  }
+
+  if (request.vendor && finalModel.vendor && request.vendor !== finalModel.vendor) {
+    throw createResolverError('RESOLVE_CONFLICT', `Requested vendor conflicts with resolved model vendor: ${request.vendor} vs ${finalModel.vendor}`, {
+      tool: request.tool,
+      profile: request.profile,
+      vendor: request.vendor,
+      modelVendor: finalModel.vendor,
+      model: request.model,
+    });
+  }
+
+  if (request.transport && finalModel.transport && request.transport !== finalModel.transport) {
+    throw createResolverError('RESOLVE_CONFLICT', `Requested transport conflicts with resolved model transport: ${request.transport} vs ${finalModel.transport}`, {
+      tool: request.tool,
+      profile: request.profile,
+      transport: request.transport,
+      modelTransport: finalModel.transport,
+      model: request.model,
+    });
+  }
+
+  if (providerName) {
+    const provider = registry.providers[providerName];
+    if (provider && finalModel.transport && !provider.transports.includes(finalModel.transport)) {
+      throw createResolverError('RESOLVE_CONFLICT', `Resolved model transport is not supported by provider: ${finalModel.transport}`, {
+        tool: request.tool,
+        profile: request.profile,
+        provider: providerName,
+        modelTransport: finalModel.transport,
+        supportedTransports: provider.transports,
+      });
+    }
+  }
+}
+
 function createPlatformService(): PlatformService {
   return {
     getPlatform() {
@@ -266,6 +342,7 @@ export function createResolverService(
           capabilities: adapterModel.capabilities.length > 0 ? adapterModel.capabilities : model.capabilities,
         };
         validateResolveContracts(normalizedRequest, profile, finalModel.capabilities);
+        validateProviderContracts(normalizedRequest, profile, finalModel, registry);
 
         const auth = adapter.resolve_auth({
           tool,
