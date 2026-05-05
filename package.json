@@ -11,7 +11,8 @@
     "dev": "tsc -w -p tsconfig.json",
     "test": "vitest run",
     "lint": "tsc --noEmit -p tsconfig.json",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:agent": "vitest run test/unit/router test/unit/dispatcher test/unit/intent"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",

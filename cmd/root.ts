@@ -10,6 +10,7 @@ import { createDoctorCommand } from './doctor.js';
 import { createEnvCommand } from './env.js';
 import { createListCommand } from './list.js';
 import { createResolveCommand } from './resolve.js';
+import { createRunCommand } from './run.js';
 import { EXIT_CODES, renderJson, toErrorEnvelope } from './_shared.js';
 
 type PackageJson = {
@@ -41,6 +42,7 @@ program.addCommand(createEnvCommand());
 program.addCommand(createAuthCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createListCommand());
+program.addCommand(createRunCommand());
 
 try {
   await program.parseAsync(process.argv);
