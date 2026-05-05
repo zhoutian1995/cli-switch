@@ -1,4 +1,6 @@
 import type { AgentId, RoutingDecision, TaskIntent } from '../../types/agent.js';
+import type { LLMService } from '../llm/service.js';
+import { routeWithLLM } from './llm-router.js';
 
 export function route(intent: TaskIntent): RoutingDecision {
   if (intent.needsLongContext) {
@@ -14,4 +16,18 @@ export function route(intent: TaskIntent): RoutingDecision {
     return { agent: 'claude-code', reason: '跨仓库复杂度', confidence: 0.9 };
   }
   return { agent: 'claude-code' as AgentId, reason: '默认路由', confidence: 0.5 };
+}
+
+export async function routeWithFallback(
+  intent: TaskIntent,
+  llm?: LLMService | null,
+): Promise<RoutingDecision> {
+  if (llm) {
+    try {
+      return await routeWithLLM(intent, llm);
+    } catch {
+      // Fall through to rules
+    }
+  }
+  return route(intent);
 }

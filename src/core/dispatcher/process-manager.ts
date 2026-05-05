@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 
 import type { AgentId, AgentProcess } from '../../types/agent.js';
+import type { GitGuard, GitCheckpoint } from '../git/guard.js';
 
 /** Command override map: agentId → executable name */
 const AGENT_COMMAND_MAP: Record<string, string> = {
@@ -39,8 +40,10 @@ export class ProcessManager {
       env?: Record<string, string>;
       /** Override the executable binary (for testing). */
       command?: string;
+      /** Optional Git guard for branch/checkpoint management */
+      gitGuard?: GitGuard;
     },
-  ): Promise<AgentProcess> {
+  ): Promise<AgentProcess & { checkpoint?: GitCheckpoint | null }> {
     // Concurrency control: wait if at capacity
     if (this.running >= this.maxConcurrency) {
       await new Promise<void>((resolve, reject) => {
@@ -52,13 +55,24 @@ export class ProcessManager {
     const id = randomUUID();
     const command =
       options?.command ?? AGENT_COMMAND_MAP[agentId] ?? agentId;
-    const info: AgentProcess = {
+    const info: AgentProcess & { checkpoint?: GitCheckpoint | null } = {
       id,
       agent: agentId,
       status: 'starting',
       stdout: '',
       stderr: '',
+      checkpoint: null,
     };
+
+    // Git guard: create branch + checkpoint before spawning
+    let checkpoint: GitCheckpoint | null = null;
+    if (options?.gitGuard) {
+      const branch = options.gitGuard.createAgentBranch(`agent-${agentId}-task`, options.cwd);
+      if (branch) {
+        checkpoint = options.gitGuard.checkpoint(`before agent ${agentId}`, options.cwd) ?? null;
+      }
+    }
+    info.checkpoint = checkpoint;
 
     return new Promise<AgentProcess>((resolve) => {
       const proc = spawn(command, args, {
@@ -108,6 +122,12 @@ export class ProcessManager {
         if (timer) clearTimeout(timer);
         info.exitCode = code ?? undefined;
         info.status = code === 0 ? 'completed' : 'failed';
+
+        // Git guard: commit changes after agent completes
+        if (checkpoint && options?.gitGuard) {
+          options.gitGuard.commitAgentChanges(checkpoint, options?.cwd);
+        }
+
         this.processes.delete(id);
         dequeue();
         resolve(info);

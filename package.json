@@ -30,8 +30,7 @@
     "test:agent": "vitest run test/unit/router test/unit/dispatcher test/unit/intent",
     "test:stress": "vitest run test/stress",
     "test:all": "vitest run",
-    "test:stress": "vitest run test/stress",
-    "test:all": "vitest run",
+    "test:git": "vitest run test/unit/git-guard test/unit/secret-detector",
     "lint": "tsc --noEmit -p tsconfig.json",
     "format": "prettier --write .",
     "prepublishOnly": "npm run build && npm test"

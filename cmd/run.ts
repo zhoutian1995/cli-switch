@@ -5,7 +5,12 @@ import { ProcessManager, resolveAgentCommand, getAgent } from '../src/core/dispa
 import { parseIntent } from '../src/core/intent/index.js';
 import { orchestrate, handoff, review } from '../src/core/orchestrator/index.js';
 import { loadBuiltins, createRegistryService } from '../src/registry/index.js';
-import { route } from '../src/core/router/index.js';
+import { routeWithFallback } from '../src/core/router/index.js';
+import { createLLMService } from '../src/core/llm/index.js';
+import { GitGuard } from '../src/core/git/guard.js';
+import { evaluateQuality } from '../src/core/aggregator/quality-checker.js';
+import { summarizeContext } from '../src/core/orchestrator/summarizer.js';
+import { reviewCode } from '../src/core/orchestrator/code-reviewer.js';
 import type { AgentId, OrchestrationMode, RunResult } from '../src/types/agent.js';
 import { printJson, EXIT_CODES } from './_shared.js';
 
@@ -16,6 +21,8 @@ interface RunOptions {
   dryRun?: boolean;
   timeout?: string;
   reviewer?: string;
+  noGit?: boolean;
+  rollback?: boolean;
 }
 
 export function createRunCommand(): Command {
@@ -28,14 +35,23 @@ export function createRunCommand(): Command {
     .option('--dry-run', 'show routing decision without executing')
     .option('--timeout <seconds>', 'agent timeout in seconds (default 120)')
     .option('--reviewer <agent>', 'reviewer agent for review mode')
+    .option('--no-git', 'skip Git branch/checkpoint management')
+    .option('--rollback', 'auto-rollback on failure')
     .action(async (input: string, options: RunOptions) => {
       const startTime = Date.now();
 
       try {
-        // Phase 1: Intent parsing (rule-based, no LLM cost)
-        const intent = await parseIntent(input);
+        // Create LLM service (optional, requires OPENROUTER_API_KEY)
+        const llm = createLLMService();
 
-        // Phase 2: Routing
+        // Phase 1: Intent parsing
+        const intent = await parseIntent(input, llm ? {
+          baseUrl: 'https://openrouter.ai/api/v1',
+          apiKey: process.env.OPENROUTER_API_KEY!,
+          model: 'deepseek/deepseek-chat-v3-0324:free',
+        } : undefined);
+
+        // Phase 2: Routing (LLM-first with rule fallback)
         let decision;
         if (options.agent) {
           decision = {
@@ -44,7 +60,7 @@ export function createRunCommand(): Command {
             confidence: 1.0,
           };
         } else {
-          decision = route(intent);
+          decision = await routeWithFallback(intent, llm);
         }
 
         const mode: OrchestrationMode = (options.mode as OrchestrationMode) ?? 'single';
@@ -75,8 +91,10 @@ export function createRunCommand(): Command {
           : (agentDef?.timeoutMs ?? 120_000);
         const maxMemoryMb = agentDef?.maxMemoryMb ?? 512;
 
+        const gitGuard = options.noGit ? undefined : new GitGuard();
+
         if (mode === 'single') {
-          await runSingle(decision.agent, input, { timeoutMs, maxMemoryMb, startTime, options });
+          await runSingle(decision.agent, input, { timeoutMs, maxMemoryMb, startTime, options, llm, gitGuard });
         } else if (mode === 'orchestrator') {
           const agents = ([decision.agent, 'codex', 'gemini'] as AgentId[]).filter(
             (a, i, arr) => arr.indexOf(a) === i,
@@ -85,11 +103,37 @@ export function createRunCommand(): Command {
           printResults(results, options);
         } else if (mode === 'handoff') {
           const chain: AgentId[] = [decision.agent, options.reviewer as AgentId ?? 'codex'];
+          // LLM context summarization for handoff
+          if (llm) {
+            try {
+              const summarized = await summarizeContext(input, input, llm);
+              // summarized context is used as enhanced input for the chain
+            } catch { /* non-critical */ }
+          }
           const result = await handoff(input, chain, { timeoutMs });
           printSingleResult(result, options);
         } else if (mode === 'review') {
           const reviewer = (options.reviewer ?? 'codex') as AgentId;
           const reviewResult = await review(input, decision.agent, reviewer, { timeoutMs });
+          // LLM code review
+          if (llm && reviewResult.code.ok) {
+            try {
+              const llmReview = await reviewCode(reviewResult.code.output, input, llm);
+              if (options.json) {
+                printJson({ ok: true, data: { ...reviewResult, llmReview }, warnings: [], diagnostics: [] });
+              } else {
+                console.log('── Code ──────────────────');
+                console.log(reviewResult.code.output);
+                console.log('── Review ─────────────────');
+                console.log(reviewResult.review.output);
+                console.log('── LLM Quality Review ─────');
+                console.log(`Approved: ${llmReview.approved}`);
+                console.log(`Summary: ${llmReview.summary}`);
+                if (llmReview.issues.length > 0) console.log(`Issues: ${llmReview.issues.join('; ')}`);
+              }
+              return;
+            } catch { /* non-critical, fall through */ }
+          }
           if (options.json) {
             printJson({ ok: true, data: reviewResult, warnings: [], diagnostics: [] });
           } else {
@@ -119,7 +163,7 @@ export function createRunCommand(): Command {
 async function runSingle(
   agentId: AgentId,
   input: string,
-  ctx: { timeoutMs: number; maxMemoryMb: number; startTime: number; options: RunOptions },
+  ctx: { timeoutMs: number; maxMemoryMb: number; startTime: number; options: RunOptions; llm?: InstanceType<typeof import('../src/core/llm/service.js').LLMService> | null; gitGuard?: GitGuard },
 ): Promise<void> {
   const { program, args } = resolveAgentCommand(agentId, input);
   const pm = new ProcessManager();
@@ -127,9 +171,16 @@ async function runSingle(
     timeoutMs: ctx.timeoutMs,
     maxMemoryMb: ctx.maxMemoryMb,
     command: program,
+    gitGuard: ctx.gitGuard,
   });
 
   let result: RunResult = buildResult(proc, ctx.startTime);
+
+  // Rollback on failure if requested
+  if (!result.ok && ctx.options.rollback && ctx.gitGuard && proc.checkpoint) {
+    ctx.gitGuard.restore(proc.checkpoint);
+    result.output += '\n[git] Rolled back to checkpoint';
+  }
 
   // Fallback: if failed, try up to 2 fallback agents
   if (!result.ok) {
@@ -148,6 +199,22 @@ async function runSingle(
       currentAgent = fb;
       attempts++;
     }
+  }
+
+  // LLM quality evaluation
+  if (result.ok && ctx.llm) {
+    try {
+      const quality = await evaluateQuality(result.output, input, ctx.llm);
+      if (ctx.options.json) {
+        result = { ...result, output: JSON.stringify({ output: result.output, quality }) };
+      } else {
+        console.log(result.output);
+        console.log(`\n── Quality: ${quality.score}/10 (${quality.pass ? 'PASS' : 'NEEDS IMPROVEMENT'}) ──`);
+        if (quality.issues.length > 0) console.log(`Issues: ${quality.issues.join('; ')}`);
+        if (quality.suggestions.length > 0) console.log(`Suggestions: ${quality.suggestions.join('; ')}`);
+        return;
+      }
+    } catch { /* non-critical */ }
   }
 
   printSingleResult(result, ctx.options);

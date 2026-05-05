@@ -1,1 +1,1 @@
-export { route } from './engine.js';
+export { route, routeWithFallback } from './engine.js';
