@@ -5,7 +5,7 @@ import { ProcessManager, resolveAgentCommand, getAgent } from '../src/core/dispa
 import { parseIntent } from '../src/core/intent/index.js';
 import { orchestrate, handoff, review } from '../src/core/orchestrator/index.js';
 import { loadBuiltins, createRegistryService } from '../src/registry/index.js';
-import { routeWithFallback } from '../src/core/router/index.js';
+import { routeWithFallback, rankAgents } from '../src/core/router/index.js';
 import { createLLMService } from '../src/core/llm/index.js';
 import { GitGuard } from '../src/core/git/guard.js';
 import { evaluateQuality } from '../src/core/aggregator/quality-checker.js';
@@ -67,7 +67,8 @@ export function createRunCommand(): Command {
 
         // --dry-run: only show routing decision
         if (options.dryRun) {
-          const output = { intent, decision, mode };
+          const ranked = rankAgents(intent.type, intent.complexity);
+          const output = { intent, decision, mode, ranked };
           if (options.json) {
             printJson({ ok: true, data: output, warnings: [], diagnostics: [] });
           } else {
@@ -79,6 +80,11 @@ export function createRunCommand(): Command {
             console.log(`  Mode:        ${mode}`);
             if (intent.techStack.length > 0) {
               console.log(`  Tech Stack:  ${intent.techStack.join(', ')}`);
+            }
+            console.log('\n── Agent Ranking ──────────────────');
+            for (const r of ranked) {
+              const marker = r.agent === decision.agent ? ' ← selected' : '';
+              console.log(`  ${r.agent.padEnd(14)} score=${r.score}  (${r.reason})${marker}`);
             }
           }
           return;

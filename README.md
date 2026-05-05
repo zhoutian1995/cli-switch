@@ -193,6 +193,54 @@ cli-switch run "重构数据库层" --dry-run --json
 | [Codex CLI](https://github.com/openai/codex) | `npm install -g @openai/codex` | API Key |
 | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `npm install -g @anthropic-ai/claude-code` | API Key |
 
+## 竞品对比
+
+| 功能 | cli-switch | AWS CAO | Claude Squad |
+|------|-----------|---------|-------------|
+| Agent 能力矩阵 | ✅ 量化评分体系 | ❌ | ❌ |
+| 自学习路由 | ✅ 基于历史数据优化 | ❌ | ❌ |
+| 性能基准测试 | ✅ 内置 benchmark 套件 | ❌ | ❌ |
+| 智能路由（LLM+规则） | ✅ | ✅ | ✅ |
+| 多 Agent 编排 | ✅ | ✅ | ✅ |
+| 失败自动回退 | ✅ | ❌ | ❌ |
+| 代码质量评估 | ✅ LLM 评估 | ❌ | ❌ |
+| Git 安全守卫 | ✅ 自动检查点 | ❌ | ❌ |
+
+## 差异化亮点
+
+### Agent 能力矩阵
+
+首次为 AI Agent 建立量化评估体系。每个 Agent 在推理、代码生成、重构、调试、测试、长上下文、速度、多模态等维度获得 0-10 评分。
+
+```bash
+# 查看所有 Agent 能力
+cli-switch capabilities
+
+# 指定 Agent
+cli-switch capabilities --agent codex --json
+```
+
+路由时自动根据任务类型加权计算各 Agent 得分，选出最优。
+
+### 自学习路由
+
+基于历史执行数据自动优化 Agent 选择。每次执行后记录结果（成功/失败、耗时、质量评分），当某个 Agent 在同类任务上成功率 >80% 且样本数 ≥5 时，优先推荐。
+
+### 性能基准测试
+
+内置 5 个 benchmark 任务，跨 Agent 对比性能：
+
+```bash
+# 全部 Agent
+cli-switch benchmark
+
+# 指定 Agent
+cli-switch benchmark --agent claude-code --iterations 5
+
+# JSON 输出
+cli-switch benchmark --json
+```
+
 ## License
 
 MIT

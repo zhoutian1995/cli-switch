@@ -1,5 +1,6 @@
 import type { LLMService } from '../llm/service.js';
 import type { RoutingDecision, TaskIntent } from '../../types/agent.js';
+import { DEFAULT_CAPABILITIES, scoreAgent } from './capability-matrix.js';
 
 const ROUTER_SYSTEM_PROMPT = `你是 Agent 路由专家。根据任务意图选择最合适的 Agent。
 
@@ -15,6 +16,16 @@ export async function routeWithLLM(
   intent: TaskIntent,
   llm: LLMService,
 ): Promise<RoutingDecision> {
+  // Build capability summary for system prompt
+  const capSummary = Object.entries(DEFAULT_CAPABILITIES)
+    .map(([id, cap]) => {
+      const s = scoreAgent(intent.type, intent.complexity, cap);
+      return `${id}: score=${s}, ctx=${cap.contextWindow}`;
+    })
+    .join('\n');
+
+  const systemPrompt = ROUTER_SYSTEM_PROMPT + '\n\nCapability scores for this task type:\n' + capSummary;
+
   const userPrompt = JSON.stringify({
     type: intent.type,
     complexity: intent.complexity,
@@ -23,5 +34,5 @@ export async function routeWithLLM(
     rawInput: intent.rawInput,
   });
 
-  return llm.chatJSON<RoutingDecision>(ROUTER_SYSTEM_PROMPT, userPrompt);
+  return llm.chatJSON<RoutingDecision>(systemPrompt, userPrompt);
 }

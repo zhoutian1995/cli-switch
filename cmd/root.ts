@@ -11,6 +11,8 @@ import { createEnvCommand } from './env.js';
 import { createListCommand } from './list.js';
 import { createResolveCommand } from './resolve.js';
 import { createRunCommand } from './run.js';
+import { createCapabilitiesCommand } from './capabilities.js';
+import { createBenchmarkCommand } from './benchmark.js';
 import { EXIT_CODES, renderJson, toErrorEnvelope } from './_shared.js';
 
 type PackageJson = {
@@ -30,11 +32,11 @@ const program = new Command();
 
 program
   .name('cli-switch')
-  .description('Multi AI CLI compatibility and runtime orchestration layer')
+  .description('The smartest AI agent orchestration layer — route, benchmark, and rank your agents')
   .version(readVersion())
   .addHelpText(
     'after',
-    '\nCommands:\n  resolve  Resolve a runtime spec\n  env      Inspect environment and config\n  auth     Check authentication status\n  doctor   Run diagnostics\n  list     List supported static metadata',
+    '\nCommands:\n  resolve       Resolve a runtime spec\n  env           Inspect environment and config\n  auth          Check authentication status\n  doctor        Run diagnostics\n  list          List supported static metadata\n  run           Run an AI agent with smart routing\n  capabilities  Show agent capability matrix\n  benchmark     Run performance benchmarks across agents',
   );
 
 program.addCommand(createResolveCommand());
@@ -43,6 +45,8 @@ program.addCommand(createAuthCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createListCommand());
 program.addCommand(createRunCommand());
+program.addCommand(createCapabilitiesCommand());
+program.addCommand(createBenchmarkCommand());
 
 try {
   await program.parseAsync(process.argv);
