@@ -1,0 +1,139 @@
+# cli-switch 实现差异清单
+
+基准文档：
+- `99-临时文件/cli-switch-docs/05-详细设计.md`
+
+## 1. 已对齐
+
+### 架构分层
+已具备：
+- CLI Layer
+- Core Resolver Layer
+- Registry + Adapter Layer
+- Platform / Runtime Layer
+
+### MVP 命令面
+已实现：
+- `resolve`
+- `env`
+- `auth status`
+- `doctor`
+- `list models`
+- `list providers`
+- `list profiles`
+
+### JSON Envelope
+已统一：
+- `schema_version`
+- `ok`
+- `data`
+- `error`
+- `warnings`
+- `diagnostics`
+
+### Auth 状态枚举
+已支持：
+- `ready`
+- `missing`
+- `expired`
+- `conflict`
+- `unsupported`
+- `unknown`
+
+## 2. 已补齐的关键差异
+
+### 模型 registry key 契约
+此前问题：`models.toml` key 未按 alias 存储，导致 doctor/resolve 行为不一致。
+
+现状：已修复为 alias key。
+
+### resolve 严格模型校验
+此前问题：模型找不到时仅 warning，不 fail。
+
+现状：已改为返回 `MODEL_NOT_FOUND`。
+
+### capability 冲突校验
+此前问题：缺少 `disallowCapabilities` / `requiredCapabilities` 的严格检查。
+
+现状：已补 `RESOLVE_CONFLICT` 校验。
+
+### runtime / registry 契约测试
+已新增：
+- `test/contract/registry-contract.test.ts`
+- `test/contract/runtime-contract.test.ts`
+
+### CLI JSON golden tests
+已新增：
+- `test/e2e/cli-json.test.ts`
+
+## 3. 部分对齐
+
+### provider / vendor / transport 语义分离
+现状：字段已分离，契约测试已补基础约束。
+
+不足：resolver 仍存在 fallback 推导路径，缺少更严格的 provider 选择策略与冲突判定。
+
+风险等级：中
+
+### adapter doctor 职责
+现状：adapter 接口定义了 `doctor()`，但主诊断逻辑仍集中在 `core/doctor`。
+
+不足：尚未形成“公共检查 + adapter 专项检查”的完整组合机制。
+
+风险等级：中
+
+### 文本输出稳定性
+现状：已补 renderer snapshot 测试。
+
+不足：还未建立外部 golden file 机制，当前依赖 inline snapshot。
+
+风险等级：低
+
+## 4. 未完全对齐 / 后续建议
+
+### provider 解析策略收紧
+建议：
+- 当用户显式指定 `provider/vendor/transport` 时，执行严格兼容性校验
+- 不兼容时直接返回 `RESOLVE_CONFLICT`
+
+优先级：高
+
+### 平台约束校验
+建议：
+- 对 `tool.supportedPlatforms`
+- `profile.constraints.supportedPlatforms`
+- `requiresBinary`
+执行 resolver 期前校验
+
+优先级：高
+
+### 错误码体系闭环
+建议补齐并统一测试：
+- `CONFIG_NOT_FOUND`
+- `BINARY_NOT_FOUND`
+- `PLATFORM_UNSUPPORTED`
+
+优先级：中
+
+### 用户配置覆盖层
+详细设计里有 `loadUserOverrides` / `merge` 概念。
+
+现状：当前主要还是 builtins。
+
+优先级：中
+
+## 5. 当前结论
+
+当前项目已经从“可运行 MVP”进入“生产级收口阶段”。
+
+已具备：
+- 可编译
+- 可测试
+- JSON 协议稳定
+- 核心契约已有自动化护栏
+
+距离严格对齐详细设计，还需要继续补：
+- provider/vendor/transport 严格解析
+- 平台与二进制约束前置校验
+- 错误码闭环
+- 用户配置覆盖层

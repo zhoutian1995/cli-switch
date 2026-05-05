@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cli-switch.dev/schema/registry.v1alpha1.json",
+  "title": "cli-switch registry override",
+  "type": "object",
+  "properties": {
+    "tools": { "type": "object", "additionalProperties": { "$ref": "#/$defs/tool" } },
+    "profiles": { "type": "object", "additionalProperties": true },
+    "models": { "type": "object", "additionalProperties": { "$ref": "#/$defs/model" } },
+    "providers": { "type": "object", "additionalProperties": { "$ref": "#/$defs/provider" } },
+    "transports": { "type": "object", "additionalProperties": { "$ref": "#/$defs/transport" } }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "tool": {
+      "type": "object",
+      "required": ["id", "adapter", "command", "defaultProfile", "binaryNames", "supportedPlatforms"],
+      "properties": {
+        "id": { "type": "string" },
+        "displayName": { "type": "string" },
+        "adapter": { "type": "string" },
+        "command": { "type": "string" },
+        "defaultProfile": { "type": "string" },
+        "binaryNames": { "type": "array", "items": { "type": "string" } },
+        "supportedPlatforms": { "type": "array", "items": { "type": "string", "enum": ["darwin", "linux"] } }
+      },
+      "additionalProperties": true
+    },
+    "model": {
+      "type": "object",
+      "required": ["alias", "resolvedName", "family", "vendor", "capabilities"],
+      "properties": {
+        "alias": { "type": "string" },
+        "resolvedName": { "type": "string" },
+        "family": { "type": "string" },
+        "vendor": { "type": "string" },
+        "provider": { "type": "string" },
+        "transports": { "type": "array", "items": { "type": "string" } },
+        "capabilities": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "provider": {
+      "type": "object",
+      "required": ["id", "vendor", "transports", "authModes", "supportedTools"],
+      "properties": {
+        "id": { "type": "string" },
+        "vendor": { "type": "string" },
+        "transports": { "type": "array", "items": { "type": "string" } },
+        "authModes": { "type": "array", "items": { "type": "string", "enum": ["login", "api_key", "oauth", "none"] } },
+        "supportedTools": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "transport": {
+      "type": "object",
+      "required": ["id", "description", "authModes"],
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": "string" },
+        "authModes": { "type": "array", "items": { "type": "string", "enum": ["login", "api_key", "oauth", "none"] } },
+        "envKeys": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    }
+  }
+}

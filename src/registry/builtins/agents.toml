@@ -1,0 +1,26 @@
+[claude-code]
+id = "claude-code"
+command = "claude"
+args = "--print"
+supportedModes = ["single", "orchestrator", "handoff", "review"]
+capabilities = ["long_context", "code_generation", "refactoring", "debugging", "mcp"]
+maxMemoryMb = 512
+timeoutMs = 300000
+
+[codex]
+id = "codex"
+command = "codex"
+args = ""
+supportedModes = ["single"]
+capabilities = ["fast_generation", "code_completion"]
+maxMemoryMb = 512
+timeoutMs = 120000
+
+[gemini]
+id = "gemini"
+command = "gemini"
+args = ""
+supportedModes = ["single"]
+capabilities = ["multimodal", "image_input"]
+maxMemoryMb = 512
+timeoutMs = 120000

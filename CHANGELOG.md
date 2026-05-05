@@ -1,40 +1,37 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to cli-switch will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/),
-and this project adheres to [Semantic Versioning](https://semver.org/).
-
-## [1.1.0] - 2026-03-13
+## [0.2.0] - 2025-05-05
 
 ### Added
-- 7 new Fucheers models: opus4.6, opus4.6-thinking, opus4.5-20251101, opus4.5-20251101-thinking, sonnet4.6, sonnet4.6-thinking, haiku4.5-20251001
-- MCP (Model Context Protocol) server management (`cli-switch mcp`)
-- Hook engine with re-entrancy protection (`cli-switch hook`)
-- TTY-based terminal isolation for multi-session support
-- Health check and diagnostics (`cli-switch health-check`)
-- Error diagnosis with solution suggestions
-- Image generation via Gemini API (`cli-switch image`)
-- Shell precmd hook for auto-sourcing environment
-- Custom model management (`cli-switch model add/remove`)
-- Comprehensive test suite (50 tests)
+- **Agent orchestration**: `cli-switch run <input>` — smart routing and execution
+- **Intent parser**: Rule-based + optional LLM intent analysis (OpenRouter compatible)
+- **Smart routing engine**: Automatic agent selection based on task type
+- **Process manager**: Subprocess management with timeout/memory protection
+- **Agent registry**: TOML-based agent definitions (claude-code, codex, gemini)
+- **Fallback mechanism**: Automatic fallback to alternative agents on failure
+- **Orchestration modes**: single, orchestrator, handoff, review
+- **Concurrency control**: Configurable max concurrent agent processes
+- **OpenRouter integration**: LLM-powered intent analysis via OpenRouter API
+- **JSON output**: All commands support `--json` for machine consumption
+- **Dry-run mode**: `--dry-run` to preview routing decisions without execution
+- 20 new tests for agent orchestration (router, dispatcher, intent)
 
 ### Changed
-- Upgraded model registry to support multiple API providers (Bailian, Zhipu, Fucheers, Google, OpenAI)
-- Improved cross-tool switching (Claude/Gemini/Codex)
-- Atomic file writes for crash safety
+- README completely rewritten with agent orchestration documentation
+- Version bumped to 0.2.0
 
-### Fixed
-- Claude settings.json corruption during concurrent switches
-- Model count in test assertions after adding new models
-
-## [1.0.0] - 2026-03-10
+## [0.1.0] - 2025-04-10
 
 ### Added
 - Initial release
-- Support for Claude Code, Gemini CLI, Codex CLI
-- 15 built-in models (Bailian 8, Zhipu 2, Gemini 4, Codex 1)
-- Interactive CLI menu (`cli-menu`)
-- YAML-based configuration
-- Cross-tool model switching
-- Model connectivity testing
+- `resolve` command: resolve tool/profile/model into runtime spec
+- `env` command: inspect environment and config sources
+- `auth status` command: check authentication status
+- `doctor` command: run diagnostics
+- `list` command: list models/providers/profiles
+- Adapter pattern for Claude Code, Codex CLI, Gemini CLI
+- TOML-based registry with user overrides
+- JSON-first output with structured error model
+- TypeScript strict mode, ESM

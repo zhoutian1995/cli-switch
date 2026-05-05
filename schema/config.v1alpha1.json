@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cli-switch.dev/schema/config.v1alpha1.json",
+  "title": "cli-switch config",
+  "type": "object",
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "v1alpha1" },
+    "default_tool": { "type": "string" },
+    "default_output": { "type": "string", "enum": ["text", "json"] },
+    "paths": {
+      "type": "object",
+      "properties": {
+        "config_dir": { "type": "string" },
+        "data_dir": { "type": "string" },
+        "cache_dir": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "enable_mcp": { "type": "boolean" },
+        "enable_skills": { "type": "boolean" },
+        "strict_profile": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

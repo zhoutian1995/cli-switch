@@ -37,6 +37,7 @@ Thumbs.db
 # Build
 build/
 dist/
+node_modules/
 *.egg-info/
 
 # Ruff
