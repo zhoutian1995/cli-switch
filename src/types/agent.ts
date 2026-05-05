@@ -44,6 +44,7 @@ export interface RunResult {
   exitCode?: number;
   durationMs: number;
   fallback?: boolean;
+  suggestedFallback?: AgentId;
 }
 
 export interface LLMConfig {

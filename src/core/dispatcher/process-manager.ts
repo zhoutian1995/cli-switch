@@ -15,6 +15,13 @@ export class ProcessManager {
     string,
     { proc: ChildProcess; info: AgentProcess; timer?: ReturnType<typeof setTimeout> }
   >();
+  private maxConcurrency: number;
+  private queue: Array<{ resolve: (value: void) => void; reject: (reason: unknown) => void }> = [];
+  private running = 0;
+
+  constructor(maxConcurrency = 3) {
+    this.maxConcurrency = maxConcurrency;
+  }
 
   /**
    * Spawn an agent subprocess.
@@ -34,6 +41,14 @@ export class ProcessManager {
       command?: string;
     },
   ): Promise<AgentProcess> {
+    // Concurrency control: wait if at capacity
+    if (this.running >= this.maxConcurrency) {
+      await new Promise<void>((resolve, reject) => {
+        this.queue.push({ resolve, reject });
+      });
+    }
+    this.running++;
+
     const id = randomUUID();
     const command =
       options?.command ?? AGENT_COMMAND_MAP[agentId] ?? agentId;
@@ -75,10 +90,17 @@ export class ProcessManager {
         info.stderr += data.toString();
       });
 
+      const dequeue = () => {
+        this.running--;
+        const next = this.queue.shift();
+        if (next) next.resolve();
+      };
+
       proc.on('error', (err) => {
         info.status = 'failed';
         info.stderr += err.message;
         this.processes.delete(id);
+        dequeue();
         resolve(info);
       });
 
@@ -87,11 +109,20 @@ export class ProcessManager {
         info.exitCode = code ?? undefined;
         info.status = code === 0 ? 'completed' : 'failed';
         this.processes.delete(id);
+        dequeue();
         resolve(info);
       });
 
       this.processes.set(id, { proc, info, timer });
     });
+  }
+
+  getStats(): { running: number; queued: number; maxConcurrency: number } {
+    return {
+      running: this.running,
+      queued: this.queue.length,
+      maxConcurrency: this.maxConcurrency,
+    };
   }
 
   listProcesses(): AgentProcess[] {

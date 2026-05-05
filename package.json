@@ -1,18 +1,40 @@
 {
   "name": "cli-switch",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "description": "AI Agent orchestration layer — smart routing, multi-agent dispatching, and runtime compatibility for Claude Code, Codex CLI, and Gemini CLI",
+  "keywords": ["ai", "agent", "claude-code", "codex", "gemini", "orchestration", "cli", "routing"],
+  "author": "zhoutian1995",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhoutian1995/cli-switch.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zhoutian1995/cli-switch/issues"
+  },
+  "homepage": "https://github.com/zhoutian1995/cli-switch#readme",
   "type": "module",
   "main": "dist/cmd/root.js",
   "bin": {
     "cli-switch": "dist/cmd/root.js"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": ["dist", "src", "cmd", "schema", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -w -p tsconfig.json",
     "test": "vitest run",
+    "test:watch": "vitest",
+    "test:agent": "vitest run test/unit/router test/unit/dispatcher test/unit/intent",
+    "test:stress": "vitest run test/stress",
+    "test:all": "vitest run",
+    "test:stress": "vitest run test/stress",
+    "test:all": "vitest run",
     "lint": "tsc --noEmit -p tsconfig.json",
     "format": "prettier --write .",
-    "test:agent": "vitest run test/unit/router test/unit/dispatcher test/unit/intent"
+    "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
