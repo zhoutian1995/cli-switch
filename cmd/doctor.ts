@@ -38,7 +38,7 @@ function runDoctor(options: DoctorOptions): CommandDoctorResult[] {
   };
   createResolverService(registry, adapters);
   createAuthService(platform);
-  const doctorService = createDoctorService(platform, registry);
+  const doctorService = createDoctorService(platform, registry, adapters);
 
   const tools = options.tool
     ? [findToolOrThrow(registryService, options.tool)]

@@ -10,6 +10,7 @@ export async function handoff(
 ): Promise<RunResult> {
   let currentInput = input;
   let lastResult: RunResult | null = null;
+  const pm = new ProcessManager();
 
   for (const agentId of agentChain) {
     const startTime = Date.now();
@@ -17,7 +18,6 @@ export async function handoff(
       ? { program: options.command, args: [currentInput] }
       : resolveAgentCommand(agentId, currentInput);
 
-    const pm = new ProcessManager();
     const proc = await pm.spawnAgent(agentId, cmd.args, {
       timeoutMs: options?.timeoutMs,
       command: cmd.program,

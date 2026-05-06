@@ -4,6 +4,9 @@ import { randomUUID } from 'node:crypto';
 import type { AgentId, AgentProcess } from '../../types/agent.js';
 import type { GitGuard, GitCheckpoint } from '../git/guard.js';
 
+/** Maximum per-stream buffer size (10 MB). */
+const MAX_STREAM_SIZE = 10 * 1024 * 1024;
+
 /** Command override map: agentId → executable name */
 const AGENT_COMMAND_MAP: Record<string, string> = {
   'claude-code': 'claude',
@@ -102,10 +105,16 @@ export class ProcessManager {
       proc.stdout?.on('data', (data: Buffer) => {
         const text = data.toString();
         info.stdout += text;
+        if (info.stdout.length > MAX_STREAM_SIZE) {
+          info.stdout = info.stdout.slice(-MAX_STREAM_SIZE) + '\n[truncated]';
+        }
         options?.onChunk?.(text);
       });
       proc.stderr?.on('data', (data: Buffer) => {
         info.stderr += data.toString();
+        if (info.stderr.length > MAX_STREAM_SIZE) {
+          info.stderr = info.stderr.slice(-MAX_STREAM_SIZE) + '\n[truncated]';
+        }
       });
 
       const dequeue = () => {
@@ -160,6 +169,10 @@ export class ProcessManager {
     if (entry.timer) clearTimeout(entry.timer);
     entry.info.status = 'failed';
     this.processes.delete(id);
+    // Decrement concurrency counter and unqueue next task
+    this.running--;
+    const next = this.queue.shift();
+    if (next) next.resolve();
     return true;
   }
 

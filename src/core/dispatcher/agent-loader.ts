@@ -68,3 +68,8 @@ export function resolveAgentCommand(id: AgentId, prompt: string): { program: str
       return { program: agent.command, args: [prompt] };
   }
 }
+
+/** Reset the agent definition cache (for testing). */
+export function resetCache(): void {
+  _cache = null;
+}
