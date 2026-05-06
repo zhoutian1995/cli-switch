@@ -30,8 +30,8 @@ describe('Task 1: 项目骨架', () => {
       expect(pkg.version).toMatch(/^\d+\.\d+\.\d+$/);
     });
 
-    it('main 指向 dist/cmd/root.js', () => {
-      expect(pkg.main).toBe('dist/cmd/root.js');
+    it('main 指向 dist/index.js（库入口）', () => {
+      expect(pkg.main).toBe('dist/index.js');
     });
 
     it('bin 包含 cli-switch', () => {

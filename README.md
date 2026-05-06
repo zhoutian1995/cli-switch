@@ -49,13 +49,12 @@ AI 编程 Agent 生态爆发式增长（Claude Code、Codex CLI、Gemini CLI、O
 ### 🚀 快速开始
 
 ```bash
-# 安装
-git clone https://github.com/zhoutian1995/cli-switch.git
-cd cli-switch
-npm install && npm run build
+# 一键安装
+npm install -g cli-switch
 
-# 全局链接（可选）
-npm link
+# 或从源码安装
+git clone https://github.com/zhoutian1995/cli-switch.git
+cd cli-switch && npm install && npm run build && npm link
 
 # 基础用法：自然语言执行
 cli-switch run "帮我重构这个模块的类型定义"
