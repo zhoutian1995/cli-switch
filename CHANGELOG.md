@@ -2,6 +2,37 @@
 
 All notable changes to cli-switch will be documented in this file.
 
+## [0.3.0] - 2025-05-06
+
+### Added
+- **ACP protocol bridge**: JSON-RPC over stdio communication with Agent subprocesses
+- **Streaming output**: Real-time display of Agent responses during execution (`--stream`)
+- **Interactive selection**: Terminal-based Agent picker with readline (`--interactive` / `-i`)
+- **Tech stack auto-detection**: Reads package.json/tsconfig/etc to identify project tech stack
+- **Project context injection**: Auto-generates enhanced system prompt with tech stack/branch/entry points
+- **Model parameter injection**: Automatically selects sonnet/opus/haiku based on task complexity
+- **Agent capability matrix**: 8-dimension quantitative scoring for each Agent (reasoning/codeGen/refactoring/debugging/testing/speed/multimodal/cost)
+- **Self-learning router**: Records routing history (JSONL), optimizes Agent selection based on success rate
+- **`cli-switch benchmark` command**: Built-in 5-task benchmark suite for cross-Agent performance comparison
+- **`cli-switch capabilities` command**: Display Agent capability matrix in text/JSON format
+- **Git safety guard**: Branch protection, auto-checkpoint, rollback, secret detection
+- **Secret detector**: Regex-based scanning for API keys, tokens, passwords, private keys in diffs
+- **Token consumption maximizer**: 6 pipeline stages with optional LLM calls (intent/routing/quality/summarization/review/aggregation)
+- **LLM service**: `LLMService` with `chat()` and `chatJSON()`, auto-create from `OPENROUTER_API_KEY`
+- **LLM-powered routing**: `routeWithFallback()` — LLM-first with rule-based fallback
+- **LLM code quality evaluation**: Score/issues/suggestions for Agent output
+- **LLM context summarization**: For handoff mode inter-agent context passing
+- **LLM code review**: For review mode automated code review
+- **Orchestrator**: Parallel/handoff/review orchestration modes
+- **Agent loader**: Parse agents.toml into structured Agent definitions
+- **Concurrency control queue**: Configurable max concurrent agent processes
+- **Stress test**: `test/stress/concurrent.test.ts` for concurrent agent dispatch
+- **Productization**: LICENSE (MIT), CHANGELOG, CONTRIBUTING, GitHub Issue/PR templates, QUICK_START guide
+
+### Changed
+- README completely rewritten with comprehensive feature documentation and comparison tables
+- Version bumped to 0.3.0
+
 ## [0.2.0] - 2025-05-05
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "cli-switch",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AI Agent orchestration layer — smart routing, multi-agent dispatching, and runtime compatibility for Claude Code, Codex CLI, and Gemini CLI",
   "keywords": ["ai", "agent", "claude-code", "codex", "gemini", "orchestration", "cli", "routing"],
   "author": "zhoutian1995",

@@ -228,7 +228,7 @@ describe('Task 1: 项目骨架', () => {
         'utf8',
       );
       expect(readme).toContain('cli-switch');
-      expect(readme).toContain('AI CLI');
+      expect(readme).toContain('AI Agent');
     });
   });
 });

@@ -11,6 +11,12 @@ import { GitGuard } from '../src/core/git/guard.js';
 import { evaluateQuality } from '../src/core/aggregator/quality-checker.js';
 import { summarizeContext } from '../src/core/orchestrator/summarizer.js';
 import { reviewCode } from '../src/core/orchestrator/code-reviewer.js';
+import { TechDetector } from '../src/core/context/tech-detector.js';
+import { ProjectContextBuilder } from '../src/core/context/project-context.js';
+import { selectModel, buildModelArgs } from '../src/core/router/model-selector.js';
+import { ACPBridge } from '../src/core/dispatcher/acp-bridge.js';
+import { StreamWriter } from '../src/core/dispatcher/stream-writer.js';
+import { InteractivePrompt } from '../src/core/ui/prompt.js';
 import type { AgentId, OrchestrationMode, RunResult } from '../src/types/agent.js';
 import { printJson, EXIT_CODES } from './_shared.js';
 
@@ -23,6 +29,9 @@ interface RunOptions {
   reviewer?: string;
   noGit?: boolean;
   rollback?: boolean;
+  stream?: boolean;
+  interactive?: boolean;
+  acp?: boolean;
 }
 
 export function createRunCommand(): Command {
@@ -37,6 +46,10 @@ export function createRunCommand(): Command {
     .option('--reviewer <agent>', 'reviewer agent for review mode')
     .option('--no-git', 'skip Git branch/checkpoint management')
     .option('--rollback', 'auto-rollback on failure')
+    .option('--stream', 'stream agent output in real-time (default: true)')
+    .option('--no-stream', 'disable streaming')
+    .option('-i, --interactive', 'interactive agent selection')
+    .option('--acp', 'use ACP protocol (JSON-RPC over stdio)')
     .action(async (input: string, options: RunOptions) => {
       const startTime = Date.now();
 
@@ -63,6 +76,23 @@ export function createRunCommand(): Command {
           decision = await routeWithFallback(intent, llm);
         }
 
+        // Auto-detect tech stack and select model
+        const techStack = TechDetector.detectFrom(process.cwd());
+        const modelSelection = selectModel(decision.agent, intent);
+        const modelArgs = buildModelArgs(modelSelection);
+
+        // Interactive mode: let user choose
+        if (options.interactive) {
+          const ranked = rankAgents(intent.type, intent.complexity);
+          const chosen = await InteractivePrompt.selectAgent(ranked, decision.agent);
+          decision = { agent: chosen, reason: 'User selected', confidence: 1.0 };
+          const confirmed = await InteractivePrompt.confirmRouting(decision.agent, decision.reason, decision.confidence);
+          if (!confirmed) {
+            console.log('Cancelled.');
+            return;
+          }
+        }
+
         const mode: OrchestrationMode = (options.mode as OrchestrationMode) ?? 'single';
 
         // --dry-run: only show routing decision
@@ -80,6 +110,10 @@ export function createRunCommand(): Command {
             console.log(`  Mode:        ${mode}`);
             if (intent.techStack.length > 0) {
               console.log(`  Tech Stack:  ${intent.techStack.join(', ')}`);
+            }
+            console.log(`  Model:       ${modelSelection.model} (${modelSelection.reason})`);
+            if (techStack.languages.length > 0) {
+              console.log(`  Detected:    ${[...techStack.languages, ...techStack.frameworks].join(', ')}`);
             }
             console.log('\n── Agent Ranking ──────────────────');
             for (const r of ranked) {
