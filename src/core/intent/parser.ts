@@ -53,6 +53,7 @@ export async function parseIntent(input: string, llmConfig?: LLMConfig, cwd?: st
     try {
       const resp = await fetch(`${llmConfig.baseUrl}/chat/completions`, {
         method: 'POST',
+        signal: AbortSignal.timeout(10_000),
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${llmConfig.apiKey}`,

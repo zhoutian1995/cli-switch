@@ -1,18 +1,10 @@
 import { createRegistryService } from '../../registry/index.js';
+import { createResolverError } from './utils.js';
 import type {
   EffectiveRegistry,
   NormalizedResolveRequest,
   ResolveRequest,
 } from '../../types/index.js';
-
-function createResolverError(code: string, message: string, details?: Record<string, unknown>): Error & { code: string; details?: Record<string, unknown> } {
-  const error = new Error(message) as Error & { code: string; details?: Record<string, unknown> };
-  error.code = code;
-  if (details) {
-    error.details = details;
-  }
-  return error;
-}
 
 export function normalize(
   request: ResolveRequest,
