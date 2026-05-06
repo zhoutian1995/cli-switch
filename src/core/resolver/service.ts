@@ -1,5 +1,6 @@
 import { accessSync, constants, existsSync } from 'node:fs';
 import path from 'node:path';
+import { findExecutableSync } from '../../platform/find-executable.js';
 import { createRegistryService } from '../../registry/index.js';
 import { readEnv } from '../../platform/env.js';
 import type { CliAdapter, PlatformService } from '../../adapters/types.js';
@@ -83,47 +84,6 @@ function validateResolveContracts(
   }
 }
 
-function isExecutable(filePath: string): boolean {
-  try {
-    accessSync(filePath, constants.X_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function findExecutableSync(names: string[]): string | null {
-  const pathValue = process.env.PATH;
-  if (!pathValue) {
-    return null;
-  }
-
-  for (const name of names) {
-    if (!name) {
-      continue;
-    }
-
-    if (path.isAbsolute(name) || name.includes(path.sep)) {
-      if (isExecutable(name)) {
-        return name;
-      }
-      continue;
-    }
-
-    for (const directory of pathValue.split(path.delimiter)) {
-      if (!directory) {
-        continue;
-      }
-
-      const candidate = path.join(directory, name);
-      if (isExecutable(candidate)) {
-        return candidate;
-      }
-    }
-  }
-
-  return null;
-}
 
 function validatePlatformConstraints(
   request: NormalizedResolveRequest,
