@@ -1,9 +1,11 @@
 import { Command } from 'commander';
 
 import { buildResult, suggestFallback } from '../src/core/aggregator/index.js';
+import { resolveCapability } from '../src/core/capability/index.js';
 import { ProcessManager, resolveAgentCommand, getAgent } from '../src/core/dispatcher/index.js';
 import { parseIntent } from '../src/core/intent/index.js';
 import { orchestrate, handoff, review } from '../src/core/orchestrator/index.js';
+import { resolveTier } from '../src/core/router/tier-resolver.js';
 import { loadBuiltins, createRegistryService } from '../src/registry/index.js';
 import { routeWithFallback, rankAgents } from '../src/core/router/index.js';
 import { createLLMService } from '../src/core/llm/index.js';
@@ -72,7 +74,10 @@ export function createRunCommand(): Command {
           model: 'deepseek/deepseek-chat-v3-0324:free',
         } : undefined);
 
-        // Phase 2: Routing (LLM-first with rule fallback)
+        // Capability resolution (intent → atomic operation)
+        const capability = resolveCapability(intent);
+
+        // Phase 2: Routing (capability-based → LLM → legacy rules)
         let decision;
         if (options.agent) {
           decision = {
@@ -81,7 +86,7 @@ export function createRunCommand(): Command {
             confidence: 1.0,
           };
         } else {
-          decision = await routeWithFallback(intent, llm);
+          decision = await routeWithFallback(intent, llm, capability);
         }
 
         // Auto-detect tech stack
@@ -104,7 +109,8 @@ export function createRunCommand(): Command {
 
         // Gateway: load config and resolve tier→model (after final agent decision)
         const gateway = loadGatewayConfig();
-        const effectiveTier = (options.tier as Tier) ?? 'standard';
+        // TODO: PR4 — wire RoutingConfig from ~/.cli-switch/config.yaml loading
+        const effectiveTier = resolveTier(capability, undefined, options.tier);
         const gatewayResult = gateway
           ? resolveGateway(gateway, decision.agent, effectiveTier)
           : null;
@@ -127,7 +133,7 @@ export function createRunCommand(): Command {
         // Guard: --execution / --strategy are planned, reject explicitly
         const VALID_TIERS = ['economy', 'standard', 'premium'] as const;
         if (options.execution && options.execution !== 'single') {
-          const msg = `--execution ${options.execution} is not yet implemented. Only 'single' is supported in PR1.`;
+          const msg = `--execution ${options.execution} is not yet implemented. Only 'single' is supported currently.`;
           if (options.json) {
             printJson({ ok: false, error: { code: 'INPUT_ERROR', message: msg }, warnings: [], diagnostics: [] });
           } else {
@@ -169,6 +175,8 @@ export function createRunCommand(): Command {
           const ranked = rankAgents(intent.type, intent.complexity);
           const output = {
             intent,
+            capability,
+            tier: effectiveTier,
             decision,
             mode,
             ranked,
@@ -185,6 +193,8 @@ export function createRunCommand(): Command {
           } else {
             console.log('── Routing Decision ──────────────────');
             console.log(`  Intent:      ${intent.type} (${intent.complexity})`);
+            console.log(`  Capability:  ${capability}`);
+            console.log(`  Tier:        ${effectiveTier}`);
             console.log(`  Agent:       ${decision.agent}`);
             console.log(`  Reason:      ${decision.reason}`);
             console.log(`  Confidence:  ${(decision.confidence * 100).toFixed(0)}%`);
@@ -226,7 +236,7 @@ export function createRunCommand(): Command {
         const gitGuard = options.noGit ? undefined : new GitGuard();
 
         if (mode === 'single') {
-          await runSingle(decision.agent, input, { timeoutMs, maxMemoryMb, startTime, options, llm, gitGuard, gatewayEnv: gatewayResult?.available === true ? gatewayResult.env : undefined, effectiveModel: gatewayResult?.available === true ? effectiveModel.model : undefined });
+          await runSingle(decision.agent, input, { timeoutMs, maxMemoryMb, startTime, options, llm, gitGuard, gatewayEnv: gatewayResult?.available === true ? gatewayResult.env : undefined, effectiveModel: gatewayResult?.available === true ? effectiveModel.model : undefined, capability });
         } else if (mode === 'orchestrator') {
           const agents = ([decision.agent, 'codex', 'gemini'] as AgentId[]).filter(
             (a, i, arr) => arr.indexOf(a) === i,
@@ -295,7 +305,7 @@ export function createRunCommand(): Command {
 async function runSingle(
   agentId: AgentId,
   input: string,
-  ctx: { timeoutMs: number; maxMemoryMb: number; startTime: number; options: RunOptions; llm?: InstanceType<typeof import('../src/core/llm/service.js').LLMService> | null; gitGuard?: GitGuard; gatewayEnv?: Record<string, string>; effectiveModel?: string },
+  ctx: { timeoutMs: number; maxMemoryMb: number; startTime: number; options: RunOptions; llm?: InstanceType<typeof import('../src/core/llm/service.js').LLMService> | null; gitGuard?: GitGuard; gatewayEnv?: Record<string, string>; effectiveModel?: string; capability?: import('../src/types/capability.js').CapabilityId },
 ): Promise<void> {
   const { program, args } = resolveAgentCommand(agentId, input, ctx.effectiveModel);
   const pm = new ProcessManager();
@@ -317,6 +327,7 @@ async function runSingle(
     await bridge.close();
     const runResult: RunResult = {
       agent: agentId,
+      capability: ctx.capability,
       ok: true,
       output: JSON.stringify(result.result ?? ''),
       exitCode: 0,
@@ -339,7 +350,7 @@ async function runSingle(
     onChunk: writer ? (chunk) => writer!.writeChunk(chunk) : undefined,
   });
 
-  let result: RunResult = buildResult(proc, ctx.startTime);
+  let result: RunResult = { ...buildResult(proc, ctx.startTime), capability: ctx.capability };
 
   if (writer) writer.complete(result.ok);
 
@@ -362,7 +373,7 @@ async function runSingle(
         maxMemoryMb: ctx.maxMemoryMb,
         command: fbCmd.program,
       });
-      result = { ...buildResult(fbProc, ctx.startTime), fallback: true };
+      result = { ...buildResult(fbProc, ctx.startTime), capability: ctx.capability, fallback: true };
       currentAgent = fb;
       attempts++;
     }

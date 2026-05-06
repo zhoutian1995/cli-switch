@@ -88,6 +88,7 @@ const TASK_WEIGHTS: Record<string, Record<keyof Omit<AgentCapabilities, 'agentId
   测试: { reasoning: 0, codeGen: 1, refactoring: 0, debugging: 0, testing: 3, longContext: 0, speed: 1, multimodal: 0 },
   解释: { reasoning: 2, codeGen: 0, refactoring: 0, debugging: 0, testing: 0, longContext: 0, speed: 2, multimodal: 0 },
   代码生成: { reasoning: 0, codeGen: 3, refactoring: 0, debugging: 0, testing: 0, longContext: 0, speed: 2, multimodal: 0 },
+  代码审查: { reasoning: 3, codeGen: 0, refactoring: 1, debugging: 1, testing: 0, longContext: 1, speed: 0, multimodal: 0 },
 };
 
 const DEFAULT_WEIGHTS: Record<string, number> = { reasoning: 1, codeGen: 1, refactoring: 1, debugging: 1, testing: 1, longContext: 1, speed: 1, multimodal: 1 };
