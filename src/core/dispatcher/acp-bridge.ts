@@ -148,16 +148,24 @@ export class ACPBridge {
       // ignore write errors
     }
 
+    // If process already exited, skip waiting
+    if (this.proc.exitCode !== null) {
+      this.closed = true;
+      return;
+    }
+
     this.proc.kill('SIGTERM');
 
-    // Give it a moment, then force kill
+    // Wait for close with a force-kill fallback
     await new Promise<void>((resolve) => {
-      const forceTimer = setTimeout(() => {
-        this.proc?.kill('SIGKILL');
+ const forceTimer = setTimeout(() => {
+        if (this.proc && this.proc.exitCode === null) {
+          this.proc.kill('SIGKILL');
+        }
         resolve();
       }, 3000);
 
-      this.proc!.on('close', () => {
+      this.proc!.once('close', () => {
         clearTimeout(forceTimer);
         resolve();
       });
