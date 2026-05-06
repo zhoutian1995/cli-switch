@@ -145,13 +145,13 @@ export function createRunCommand(): Command {
         } else if (mode === 'handoff') {
           const chain: AgentId[] = [decision.agent, options.reviewer as AgentId ?? 'codex'];
           // LLM context summarization for handoff
+          let effectiveInput = input;
           if (llm) {
             try {
-              const summarized = await summarizeContext(input, input, llm);
-              // summarized context is used as enhanced input for the chain
+              effectiveInput = await summarizeContext(input, input, llm);
             } catch { /* non-critical */ }
           }
-          const result = await handoff(input, chain, { timeoutMs });
+          const result = await handoff(effectiveInput, chain, { timeoutMs });
           printSingleResult(result, options);
         } else if (mode === 'review') {
           const reviewer = (options.reviewer ?? 'codex') as AgentId;
