@@ -13,7 +13,7 @@ const BENCHMARK_TASKS = [
 
 export function createBenchmarkCommand(): Command {
   return new Command('benchmark')
-    .description('Run performance benchmarks across agents')
+    .description('Run capability simulation (not real benchmarks) across agents')
     .option('--agent <agent>', 'benchmark specific agent')
     .option('--iterations <n>', 'number of iterations per task', '3')
     .option('--json', 'output JSON')
@@ -22,7 +22,8 @@ export function createBenchmarkCommand(): Command {
       const allAgents = Object.keys(DEFAULT_CAPABILITIES) as AgentId[];
       const agents = options.agent ? [options.agent as AgentId] : allAgents;
 
-      console.log(`cli-switch benchmark — ${iterations} iterations × ${agents.length} agent(s) × ${BENCHMARK_TASKS.length} tasks\n`);
+      console.log(`cli-switch capability simulation — ${iterations} iterations × ${agents.length} agent(s) × ${BENCHMARK_TASKS.length} tasks`);
+      console.log('⚠ NOTE: This is a capability simulation, not a real performance benchmark.\n');
 
       const results: BenchmarkResult[] = [];
 
