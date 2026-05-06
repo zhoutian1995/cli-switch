@@ -11,7 +11,7 @@ export async function orchestrate(
   options?: { timeoutMs?: number; command?: string },
 ): Promise<RunResult[]> {
   const tasks = splitTasks(input);
-  const pm = new ProcessManager(agents.length);
+  const pm = new ProcessManager(Math.min(3, agents.length));
   const results: RunResult[] = [];
 
   const promises = tasks.map(async (task, i) => {
