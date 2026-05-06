@@ -122,7 +122,8 @@ describe('GitGuard', () => {
     // Create a branch with an old timestamp (simulate)
     const oldBranch = `agent/old-task-${Date.now() - 100 * 86_400_000}`;
     execSync(`git checkout -b ${oldBranch}`, { cwd: repo });
-    execSync('git checkout master || git checkout main', { cwd: repo });
+    // Switch back to main branch without stderr noise
+    execSync('git checkout main', { cwd: repo, stdio: ['pipe', 'pipe', 'pipe'] });
 
     const cleaned = guard.cleanupOldBranches(7, repo);
     expect(cleaned).toContain(oldBranch);
