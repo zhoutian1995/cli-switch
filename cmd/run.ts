@@ -93,7 +93,8 @@ export function createRunCommand(): Command {
           }
         }
 
-        const mode: OrchestrationMode = (options.mode as OrchestrationMode) ?? 'single';
+        const mode: OrchestrationMode = (options.mode as OrchestrationMode)
+          ?? (options.interactive ? await InteractivePrompt.selectMode() : 'single');
 
         // --dry-run: only show routing decision
         if (options.dryRun) {
@@ -207,14 +208,48 @@ async function runSingle(
 ): Promise<void> {
   const { program, args } = resolveAgentCommand(agentId, input);
   const pm = new ProcessManager();
+
+  // ACP mode: use ACPBridge instead of direct spawn
+  if (ctx.options.acp) {
+    const bridge = new ACPBridge();
+    const writer = ctx.options.stream !== false ? StreamWriter.create() : null;
+    if (writer) {
+      writer.startAgent(agentId);
+      bridge.onChunk((chunk) => writer!.writeChunk(chunk));
+    }
+    await bridge.connect(program, args, {
+      cwd: process.cwd(),
+      timeoutMs: ctx.timeoutMs,
+    });
+    const result = await bridge.sendTask(input);
+    if (writer) writer.complete(true);
+    await bridge.close();
+    const runResult: RunResult = {
+      agent: agentId,
+      ok: true,
+      output: JSON.stringify(result.result ?? ''),
+      exitCode: 0,
+      durationMs: Date.now() - ctx.startTime,
+    };
+    printSingleResult(runResult, ctx.options);
+    return;
+  }
+
+  // Stream mode: set up StreamWriter
+  const writer = ctx.options.stream !== false ? StreamWriter.create() : null;
+  if (writer) writer.startAgent(agentId);
+
   const proc = await pm.spawnAgent(agentId, args, {
     timeoutMs: ctx.timeoutMs,
     maxMemoryMb: ctx.maxMemoryMb,
     command: program,
     gitGuard: ctx.gitGuard,
+    onChunk: writer ? (chunk) => writer!.writeChunk(chunk) : undefined,
   });
 
   let result: RunResult = buildResult(proc, ctx.startTime);
+
+  if (writer) writer.complete(result.ok);
 
   // Rollback on failure if requested
   if (!result.ok && ctx.options.rollback && ctx.gitGuard && proc.checkpoint) {

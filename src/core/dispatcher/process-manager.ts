@@ -42,6 +42,8 @@ export class ProcessManager {
       command?: string;
       /** Optional Git guard for branch/checkpoint management */
       gitGuard?: GitGuard;
+      /** Real-time stdout chunk callback for streaming. */
+      onChunk?: (chunk: string) => void;
     },
   ): Promise<AgentProcess & { checkpoint?: GitCheckpoint | null }> {
     // Concurrency control: wait if at capacity
@@ -98,7 +100,9 @@ export class ProcessManager {
       }
 
       proc.stdout?.on('data', (data: Buffer) => {
-        info.stdout += data.toString();
+        const text = data.toString();
+        info.stdout += text;
+        options?.onChunk?.(text);
       });
       proc.stderr?.on('data', (data: Buffer) => {
         info.stderr += data.toString();

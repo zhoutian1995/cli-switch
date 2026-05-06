@@ -14,14 +14,15 @@
   },
   "homepage": "https://github.com/zhoutian1995/cli-switch#readme",
   "type": "module",
-  "main": "dist/cmd/root.js",
+  "main": "dist/index.js",
+  "types": "dist/types/index.d.ts",
   "bin": {
     "cli-switch": "dist/cmd/root.js"
   },
   "engines": {
     "node": ">=18.0.0"
   },
-  "files": ["dist", "src", "cmd", "schema", "README.md", "LICENSE"],
+  "files": ["dist", "schema", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -w -p tsconfig.json",
@@ -31,6 +32,7 @@
     "test:stress": "vitest run test/stress",
     "test:all": "vitest run",
     "test:git": "vitest run test/unit/git-guard test/unit/secret-detector",
+    "smoke": "npm run build && node scripts/smoke-test.js",
     "lint": "tsc --noEmit -p tsconfig.json",
     "format": "prettier --write .",
     "prepublishOnly": "npm run build && npm test"
