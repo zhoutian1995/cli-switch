@@ -4,3 +4,4 @@ export type { AgentDefinition } from './agent-loader.js';
 export { ACPBridge } from './acp-bridge.js';
 export type { ACPMessage, ProjectContext } from './acp-bridge.js';
 export { StreamWriter } from './stream-writer.js';
+export type { SandboxOptions } from '../sandbox/index.js';

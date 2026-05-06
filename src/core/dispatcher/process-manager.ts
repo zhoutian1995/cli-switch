@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { AgentId, AgentProcess } from '../../types/agent.js';
 import type { GitGuard, GitCheckpoint } from '../git/guard.js';
+import { createSandbox, type SandboxOptions } from '../sandbox/index.js';
 
 /** Maximum per-stream buffer size (10 MB). */
 const MAX_STREAM_SIZE = 10 * 1024 * 1024;
@@ -43,6 +44,8 @@ export class ProcessManager {
       env?: Record<string, string>;
       /** Gateway env vars (highest priority, overrides native API keys). */
       gatewayEnv?: Record<string, string>;
+      /** Child-process sandbox options. Env isolation is always applied. */
+      sandbox?: SandboxOptions;
       /** Override the executable binary (for testing). */
       command?: string;
       /** Optional Git guard for branch/checkpoint management */
@@ -81,21 +84,62 @@ export class ProcessManager {
     }
     info.checkpoint = checkpoint;
 
+    const releaseSlot = () => {
+      this.running--;
+      const next = this.queue.shift();
+      if (next) next.resolve();
+    };
+
+    const envOverlay = { ...options?.env, ...options?.gatewayEnv };
+    const sandbox = await createSandbox(envOverlay, {
+      ...options?.sandbox,
+      taskId: options?.sandbox?.taskId ?? id,
+    }).catch((err) => {
+      info.status = 'failed';
+      info.stderr += err instanceof Error ? err.message : String(err);
+      return null;
+    });
+
+    if (!sandbox) {
+      releaseSlot();
+      return info;
+    }
+
     return new Promise<AgentProcess>((resolve) => {
-      const proc = spawn(command, args, {
-        cwd: options?.cwd,
-        env: { ...process.env, ...options?.env, ...options?.gatewayEnv },
-        // Resource limits — rssBytes is soft limit on macOS (Node ≥22)
-        ...(options?.maxMemoryMb
-          ? { resourceLimits: { maxOldGenerationSizeMb: options.maxMemoryMb } }
-          : {}),
-      });
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const settle = (finalInfo: AgentProcess & { checkpoint?: GitCheckpoint | null }) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        this.processes.delete(id);
+        void sandbox.cleanup().finally(() => {
+          releaseSlot();
+          resolve(finalInfo);
+        });
+      };
+
+      let proc: ChildProcess;
+      try {
+        proc = spawn(command, args, {
+          cwd: options?.cwd,
+          env: sandbox.env,
+          // Resource limits — rssBytes is soft limit on macOS (Node ≥22)
+          ...(options?.maxMemoryMb
+            ? { resourceLimits: { maxOldGenerationSizeMb: options.maxMemoryMb } }
+            : {}),
+        });
+      } catch (err) {
+        info.status = 'failed';
+        info.stderr += err instanceof Error ? err.message : String(err);
+        settle(info);
+        return;
+      }
 
       info.pid = proc.pid ?? undefined;
       info.status = 'running';
 
       const timeout = options?.timeoutMs;
-      let timer: ReturnType<typeof setTimeout> | undefined;
       if (timeout) {
         timer = setTimeout(() => {
           proc.kill('SIGKILL');
@@ -119,18 +163,10 @@ export class ProcessManager {
         }
       });
 
-      const dequeue = () => {
-        this.running--;
-        const next = this.queue.shift();
-        if (next) next.resolve();
-      };
-
       proc.on('error', (err) => {
         info.status = 'failed';
         info.stderr += err.message;
-        this.processes.delete(id);
-        dequeue();
-        resolve(info);
+        settle(info);
       });
 
       proc.on('close', (code) => {
@@ -143,9 +179,7 @@ export class ProcessManager {
           options.gitGuard.commitAgentChanges(checkpoint, options?.cwd);
         }
 
-        this.processes.delete(id);
-        dequeue();
-        resolve(info);
+        settle(info);
       });
 
       this.processes.set(id, { proc, info, timer });
@@ -171,10 +205,7 @@ export class ProcessManager {
     if (entry.timer) clearTimeout(entry.timer);
     entry.info.status = 'failed';
     this.processes.delete(id);
-    // Decrement concurrency counter and unqueue next task
-    this.running--;
-    const next = this.queue.shift();
-    if (next) next.resolve();
+    // close will run sandbox cleanup and release the concurrency slot.
     return true;
   }
 

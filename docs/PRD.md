@@ -185,11 +185,11 @@ Skill（技能）     = 可复用模板（登录功能开发、Bug 修复流程�
 
 ### 4.3 沙盒隔离
 
-每次执行在独立环境中：
-- 独立环境变量和 API Key
-- HOME 隔离（Agent 读不到用户本机配置）
-- 文件系统白名单（Agent 只能碰项目目录内文件）
-- 任务结束即销毁
+当前 v0.1 基线：
+- 已实现独立子进程环境变量和 API Key overlay 注入
+- 已清理父进程 session 环境变量，避免 Claude/Codex 会话状态泄漏
+- gateway enabled 时启用临时 HOME 隔离，避免 Agent 读取用户 HOME 下的全局配置
+- 文件系统白名单、patch-only 输出、临时项目副本和 worktree 隔离仍是后续目标
 
 > 详细方案见 `sandbox-spec.md`
 
@@ -237,9 +237,9 @@ Skill（技能）     = 可复用模板（登录功能开发、Bug 修复流程�
 
 ### v0.1 — 基础可运行
 
-- [ ] 沙盒环境（进程隔离 + 环境变量注入）
+- [x] 沙盒环境（进程隔离 + 环境变量注入；不包含完整文件系统白名单）
 - [ ] Claude Code 适配器（单步执行）
-- [ ] Gateway 注入（SWITCH_API_KEY / SWITCH_BASE_URL）
+- [x] Gateway 注入（SWITCH_API_KEY / SWITCH_BASE_URL 映射到 Agent 原生 env；single mode）
 - [ ] JSON 输出
 - [ ] `cli-switch run <任务> --agent claude-code`
 

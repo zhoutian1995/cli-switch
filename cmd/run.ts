@@ -347,6 +347,7 @@ async function runSingle(
     command: program,
     gitGuard: ctx.gitGuard,
     gatewayEnv: ctx.gatewayEnv,
+    sandbox: { homeIsolation: Boolean(ctx.gatewayEnv) },
     onChunk: writer ? (chunk) => writer!.writeChunk(chunk) : undefined,
   });
 
@@ -372,6 +373,8 @@ async function runSingle(
         timeoutMs: ctx.timeoutMs,
         maxMemoryMb: ctx.maxMemoryMb,
         command: fbCmd.program,
+        gatewayEnv: ctx.gatewayEnv,
+        sandbox: { homeIsolation: Boolean(ctx.gatewayEnv) },
       });
       result = { ...buildResult(fbProc, ctx.startTime), capability: ctx.capability, fallback: true };
       currentAgent = fb;

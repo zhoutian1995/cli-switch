@@ -8,17 +8,20 @@
 >
 > **关系**：本 spec 是 PRD 沙盒相关章节的结构化提取和细化，为沙盒隔离的实现提供精确规格定义。
 >
-> **状态说明**：本文档的 HOME 隔离、patch-only 文件策略和 gateway 环境隔离是 PRD v2.0 目标。当前 v0.3.0 代码尚未实现完整沙盒；当前安全边界主要来自子进程超时/资源限制和 GitGuard。
+> **状态说明**：v0.1 已实现子进程环境隔离、父进程 session 环境清理、gateway 环境 overlay 注入，以及 gateway 场景的可选 HOME 隔离。file policy、patch-only 输出、临时项目副本和 worktree 隔离仍是后续目标，当前实现不得描述为完整文件系统沙盒。
 
 ---
 
-## 0. 当前安全基线（v0.3.0）
+## 0. 当前安全基线（v0.1）
 
 当前 `ProcessManager.spawnAgent()` 的真实行为：
 - 使用真实工作目录或调用方传入的 `cwd`
-- 子进程环境为 `{ ...process.env, ...options.env }`
-- 不重写 `HOME`
-- 不创建 `/tmp/cli-switch-{task_id}/home`
+- 子进程环境由 `createSandboxEnv(process.env, envOverlay)` 生成
+- 清理父进程 session 环境变量，例如 `CLAUDECODE`、`CLAUDE_CODE_SESSION_ID`、`CODEX_SESSION_ID`
+- `options.env` 与 `options.gatewayEnv` 合并为 overlay，`gatewayEnv` 优先级最高
+- 默认不重写 `HOME`
+- gateway enabled 时启用 `homeIsolation`，创建临时 HOME 并在任务结束后清理
+- 临时 HOME 只 symlink `.gitconfig` 和 `.ssh/known_hosts`，不带入 `.claude/`、`.codex/`、`.config/`
 - 不阻止 Agent 直接读写项目文件
 - 不强制 patch-only 输出
 - 支持 timeout 后 `SIGKILL`
@@ -35,13 +38,13 @@
 重要边界：
 - GitGuard 是版本控制安全网，不是文件系统沙盒。
 - 当前真实项目目录如果暴露给可写 Agent，Agent 仍可能直接修改文件。
-- v2.0 的 HOME 隔离、临时项目副本、patch apply 校验上线前，不应把当前实现描述为强沙盒。
+- 临时项目副本、patch apply 校验或 worktree 隔离上线前，不应把当前实现描述为强文件沙盒。
 
 ---
 
 ## 1. 环境隔离
 
-> v2.0 目标：当前代码尚未实现本章描述的 `SWITCH_API_KEY` / `SWITCH_BASE_URL` gateway 环境隔离。当前 adapter 使用 Agent 原生环境变量，例如 `ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`GEMINI_API_KEY`。
+> v0.1 状态：已实现环境 overlay 注入和父进程 session 环境清理。`SWITCH_API_KEY` / `SWITCH_BASE_URL` 由 gateway resolver 映射为 Agent 原生环境变量，例如 `ANTHROPIC_API_KEY`、`OPENAI_API_KEY` 和对应 base URL。
 
 ### 1.1 核心约束
 
@@ -86,6 +89,8 @@ codex:
 ---
 
 ## 2. HOME 隔离
+
+> v0.1 状态：HOME 隔离已作为 `ProcessManager.spawnAgent()` 的可选 sandbox 配置实现，并在 `cli-switch run` 的 gateway enabled 路径启用。它的目标是避免 Claude Code / Codex 读取用户 HOME 下的全局配置覆盖 gateway 注入。
 
 ### 2.1 为什么需要 HOME 隔离
 
