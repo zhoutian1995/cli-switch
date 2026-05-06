@@ -25,6 +25,26 @@ describe('intent parser (rules)', () => {
     expect(intent.type).toBe('解释');
   });
 
+  it('detects Chinese analysis intent', async () => {
+    const intent = await parseIntent('分析一下这个错误');
+    expect(intent.type).toBe('解释');
+  });
+
+  it('detects code review intent', async () => {
+    const intent = await parseIntent('review the auth module code');
+    expect(intent.type).toBe('代码审查');
+  });
+
+  it('detects Chinese 代码审查 intent', async () => {
+    const intent = await parseIntent('代码审查一下这个PR');
+    expect(intent.type).toBe('代码审查');
+  });
+
+  it('detects Chinese 为什么 intent', async () => {
+    const intent = await parseIntent('为什么登录失败');
+    expect(intent.type).toBe('解释');
+  });
+
   it('defaults to code generation', async () => {
     const intent = await parseIntent('create a new API endpoint');
     expect(intent.type).toBe('代码生成');

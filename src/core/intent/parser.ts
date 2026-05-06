@@ -7,7 +7,8 @@ const TYPE_KEYWORDS: Array<{ keywords: string[]; type: string }> = [
   { keywords: ['refactor', '重构'], type: '重构' },
   { keywords: ['debug', 'fix', 'bug', '调试', '修复'], type: '调试' },
   { keywords: ['test', 'spec', '测试'], type: '测试' },
-  { keywords: ['explain', 'what', 'why', '解释', '说明', '是什么'], type: '解释' },
+  { keywords: ['review', 'code review', '代码审查', '审查代码', '看看代码', 'check code'], type: '代码审查' },
+  { keywords: ['explain', 'what', 'why', '解释', '说明', '是什么', '分析', '看看', '为什么', 'inspect', '分析一下', '怎么回事'], type: '解释' },
 ];
 
 function matchType(input: string): string {

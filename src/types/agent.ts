@@ -1,5 +1,7 @@
 /** Agent orchestration types */
 
+import type { CapabilityId } from './capability.js';
+
 export type AgentId = 'claude-code' | 'codex' | 'gemini' | 'opencode' | 'aider';
 
 export interface TaskIntent {
@@ -40,6 +42,8 @@ export interface RunRequest {
 export interface RunResult {
   ok: boolean;
   agent: AgentId;
+  /** Capability ID resolved from user intent. */
+  capability?: CapabilityId;
   output: string;
   exitCode?: number;
   durationMs: number;
