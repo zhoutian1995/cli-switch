@@ -247,9 +247,9 @@ async function runSingle(
     onChunk: writer ? (chunk) => writer!.writeChunk(chunk) : undefined,
   });
 
-  if (writer) writer.complete(proc.status === 'completed');
-
   let result: RunResult = buildResult(proc, ctx.startTime);
+
+  if (writer) writer.complete(result.ok);
 
   // Rollback on failure if requested
   if (!result.ok && ctx.options.rollback && ctx.gitGuard && proc.checkpoint) {

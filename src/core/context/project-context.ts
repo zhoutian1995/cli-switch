@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import type { TaskIntent } from '../../types/agent.js';
@@ -37,10 +37,10 @@ export class ProjectContextBuilder {
     const techStack = TechDetector.detectFrom(this.projectRoot);
 
     let projectName = this.projectRoot.split('/').pop() ?? 'unknown';
-    const pkgJson = await tryExec('cat', ['package.json'], this.projectRoot);
-    if (pkgJson) {
+    const pkgPath = resolve(this.projectRoot, 'package.json');
+    if (existsSync(pkgPath)) {
       try {
-        const pkg = JSON.parse(pkgJson);
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
         if (pkg.name) projectName = pkg.name;
       } catch { /* ignore */ }
     }
