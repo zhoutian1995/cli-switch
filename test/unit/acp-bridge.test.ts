@@ -1,48 +1,104 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ACPBridge, type ACPMessage } from '../../src/core/dispatcher/acp-bridge.js';
+import { describe, it, expect, afterEach } from 'vitest';
+import { ACPBridge } from '../../src/core/dispatcher/acp-bridge.js';
+
+/**
+ * Real ACP Bridge tests using mock node processes.
+ */
+
+function makeEchoScript(): string {
+  // Use require() to avoid esbuild parsing import in string
+  return [
+    'const { createInterface } = require("readline");',
+    'const rl = createInterface({ input: process.stdin });',
+    'rl.on("line", (line) => {',
+    '  try {',
+    '    const msg = JSON.parse(line);',
+    '    if (msg.id !== undefined) {',
+    '      process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: msg.id, result: { echoed: msg.method, params: msg.params } }) + "\\n");',
+    '    }',
+    '    if (msg.method === "exit") { process.exit(0); }',
+    '  } catch {}',
+    '});',
+  ].join('\n');
+}
+
+function makeSilentScript(): string {
+  return [
+    'const { createInterface } = require("readline");',
+    'const rl = createInterface({ input: process.stdin });',
+    'rl.on("line", () => {});',
+  ].join('\n');
+}
+
+function makeStreamingScript(): string {
+  return [
+    'process.stdout.write("hello from agent\\n");',
+    'const { createInterface } = require("readline");',
+    'const rl = createInterface({ input: process.stdin });',
+    'rl.on("line", (line) => {',
+    '  try {',
+    '    const msg = JSON.parse(line);',
+    '    if (msg.method === "exit") process.exit(0);',
+    '    if (msg.id !== undefined) {',
+    '      process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: msg.id, result: "ok" }) + "\\n");',
+    '    }',
+    '  } catch {}',
+    '});',
+  ].join('\n');
+}
 
 describe('ACPBridge', () => {
-  it('encodes JSON-RPC messages correctly', () => {
-    const msg: ACPMessage = { jsonrpc: '2.0', id: 1, method: 'task/run', params: { prompt: 'hello' } };
-    const json = JSON.stringify(msg);
-    expect(json).toContain('"jsonrpc":"2.0"');
-    expect(json).toContain('"method":"task/run"');
-    expect(json).toContain('"prompt":"hello"');
+  let bridge: ACPBridge | null = null;
+
+  afterEach(async () => {
+    if (bridge && !bridge.isClosed) {
+      await bridge.close();
+    }
+    bridge = null;
   });
 
-  it('notification has no id field', () => {
-    const msg: ACPMessage = { jsonrpc: '2.0', method: 'exit' };
-    expect(msg.id).toBeUndefined();
-    expect(msg.method).toBe('exit');
+  it('connects and receives response via JSON-RPC', async () => {
+    bridge = new ACPBridge();
+    await bridge.connect('node', ['-e', makeEchoScript()], { timeoutMs: 5000 });
+
+    const result = await bridge.request('test/method', { key: 'value' }, 3000);
+    expect(result).toEqual({ echoed: 'test/method', params: { key: 'value' } });
   });
 
-  it('handles response with matching id', async () => {
-    // Simulate a response coming back
-    const bridge = new ACPBridge();
-    // We can't easily test connect() without a real process,
-    // but we can test the message matching logic indirectly.
-    const msg: ACPMessage = { jsonrpc: '2.0', id: 1, result: { text: 'done' } };
-    expect(msg.id).toBe(1);
-    expect(msg.result).toEqual({ text: 'done' });
+  it('sendTask sends task/run method and gets response', async () => {
+    bridge = new ACPBridge();
+    await bridge.connect('node', ['-e', makeEchoScript()], { timeoutMs: 5000 });
+
+    const result = await bridge.sendTask('hello world', { techStack: ['typescript'] });
+    expect(result.result).toBeDefined();
   });
 
-  it('handles error response', () => {
-    const msg: ACPMessage = {
-      jsonrpc: '2.0',
-      id: 2,
-      error: { code: -32600, message: 'Invalid Request' },
-    };
-    expect(msg.error?.code).toBe(-32600);
-    expect(msg.error?.message).toBe('Invalid Request');
+  it('receives streaming chunks from non-JSON output', async () => {
+    bridge = new ACPBridge();
+    const chunks: string[] = [];
+    bridge.onChunk((chunk) => chunks.push(chunk));
+
+    await bridge.connect('node', ['-e', makeStreamingScript()], { timeoutMs: 5000 });
+
+    // Give time for initial output
+    await new Promise((r) => setTimeout(r, 300));
+
+    expect(chunks.some((c) => c.includes('hello from agent'))).toBe(true);
   });
 
-  it('ProjectContext type accepts optional fields', () => {
-    const ctx = {
-      techStack: ['typescript', 'react'],
-      systemPrompt: 'You are an expert.',
-      model: 'claude-sonnet-4',
-    };
-    expect(ctx.techStack).toHaveLength(2);
-    expect(ctx.systemPrompt).toContain('expert');
+  it('handles timeout on pending request', async () => {
+    bridge = new ACPBridge();
+    await bridge.connect('node', ['-e', makeSilentScript()], { timeoutMs: 5000 });
+
+    await expect(bridge.request('test/timeout', {}, 500)).rejects.toThrow('Request timeout');
+  });
+
+  it('close terminates the process', async () => {
+    bridge = new ACPBridge();
+    await bridge.connect('node', ['-e', makeEchoScript()], { timeoutMs: 5000 });
+    expect(bridge.isClosed).toBe(false);
+
+    await bridge.close();
+    expect(bridge.isClosed).toBe(true);
   });
 });

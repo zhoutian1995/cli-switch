@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -21,22 +21,23 @@ const COMMON_ENTRY_POINTS = [
   'src/index.py', 'src/main.py', 'cmd/root.ts',
 ];
 
-function tryExec(cmd: string, cwd: string): string | null {
-  try {
-    return execSync(cmd, { cwd, encoding: 'utf-8' }).trim();
-  } catch {
-    return null;
-  }
+function tryExec(cmd: string, args: string[], cwd: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    execFile(cmd, args, { cwd, encoding: 'utf-8', timeout: 5000 }, (err, stdout) => {
+      if (err) resolve(null);
+      else resolve(stdout.trim() || null);
+    });
+  });
 }
 
 export class ProjectContextBuilder {
   constructor(private projectRoot: string) {}
 
-  build(): ProjectContextInfo {
+  async build(): Promise<ProjectContextInfo> {
     const techStack = TechDetector.detectFrom(this.projectRoot);
 
     let projectName = this.projectRoot.split('/').pop() ?? 'unknown';
-    const pkgJson = tryExec('cat package.json', this.projectRoot);
+    const pkgJson = await tryExec('cat', ['package.json'], this.projectRoot);
     if (pkgJson) {
       try {
         const pkg = JSON.parse(pkgJson);
@@ -44,10 +45,10 @@ export class ProjectContextBuilder {
       } catch { /* ignore */ }
     }
 
-    const gitBranch = tryExec('git rev-parse --abbrev-ref HEAD', this.projectRoot) ?? '';
+    const gitBranch = (await tryExec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], this.projectRoot)) ?? '';
 
     let recentFiles: string[] = [];
-    const status = tryExec('git diff --name-only HEAD', this.projectRoot);
+    const status = await tryExec('git', ['diff', '--name-only', 'HEAD'], this.projectRoot);
     if (status) {
       recentFiles = status.split('\n').filter(Boolean).slice(0, 20);
     }
@@ -66,7 +67,7 @@ export class ProjectContextBuilder {
     };
   }
 
-  buildSystemPrompt(intent: TaskIntent, techStack: TechStack): string {
+  async buildSystemPrompt(intent: TaskIntent, techStack: TechStack): Promise<string> {
     const parts: string[] = [];
 
     const stackDesc: string[] = [];
@@ -79,7 +80,7 @@ export class ProjectContextBuilder {
     parts.push(`You are working on a project using ${stackDesc.join('. ') || 'unknown stack'}.`);
     parts.push(`The task type is "${intent.type}" with "${intent.complexity}" complexity.`);
 
-    const gitBranch = tryExec('git rev-parse --abbrev-ref HEAD', this.projectRoot);
+    const gitBranch = await tryExec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], this.projectRoot);
     if (gitBranch) parts.push(`Current branch: ${gitBranch}.`);
 
     const entryPoints = COMMON_ENTRY_POINTS.filter((f) =>

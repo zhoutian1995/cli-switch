@@ -17,7 +17,8 @@ export interface ModelSelection {
   temperature?: number;
 }
 
-const MODEL_MAP: Record<AgentId, ModelInfo[]> = {
+/** Default model map used as fallback when registry is unavailable. */
+const DEFAULT_MODEL_MAP: Record<AgentId, ModelInfo[]> = {
   'claude-code': [
     { id: 'claude-sonnet-4', label: 'Sonnet 4', costPerToken: 5, contextWindow: 200000, reasoning: 9, speed: 7 },
     { id: 'claude-opus-4', label: 'Opus 4', costPerToken: 2, contextWindow: 200000, reasoning: 10, speed: 4 },
@@ -40,6 +41,23 @@ const MODEL_MAP: Record<AgentId, ModelInfo[]> = {
   ],
 };
 
+/** Registry-provided model override. Set via setModelOverride(). */
+let registryModelMap: Record<AgentId, ModelInfo[]> | null = null;
+
+/** Allow callers (e.g. registry) to override the default model map. */
+export function setModelOverride(map: Record<AgentId, ModelInfo[]>): void {
+  registryModelMap = map;
+}
+
+/** Reset to default model map. */
+export function resetModelOverride(): void {
+  registryModelMap = null;
+}
+
+function getModelMap(): Record<AgentId, ModelInfo[]> {
+  return registryModelMap ?? DEFAULT_MODEL_MAP;
+}
+
 const PROVIDER_MAP: Record<AgentId, string> = {
   'claude-code': 'anthropic',
   codex: 'openai',
@@ -54,7 +72,7 @@ export function selectModel(
   agent: AgentId,
   intent: TaskIntent,
 ): ModelSelection {
-  const models = MODEL_MAP[agent] ?? MODEL_MAP['claude-code'];
+  const models = getModelMap()[agent] ?? getModelMap()['claude-code'];
   const provider = PROVIDER_MAP[agent] ?? 'unknown';
 
   // Long context → prefer large context window
