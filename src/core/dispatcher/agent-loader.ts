@@ -63,7 +63,7 @@ export class AgentLoader {
     return this.load()[id] ?? null;
   }
 
-  resolveCommand(id: AgentId, prompt: string): { program: string; args: string[] } {
+  resolveCommand(id: AgentId, prompt: string, model?: string): { program: string; args: string[] } {
     const agent = this.get(id);
     if (!agent) {
       return { program: id, args: [prompt] };
@@ -71,11 +71,11 @@ export class AgentLoader {
 
     switch (id) {
       case 'claude-code':
-        return { program: agent.command, args: ['--print', prompt] };
+        return { program: agent.command, args: [...(model ? ['--model', model] : []), '--print', prompt] };
       case 'codex':
-        return { program: agent.command, args: [prompt] };
+        return { program: agent.command, args: [...(model ? ['-m', model] : []), prompt] };
       case 'gemini':
-        return { program: agent.command, args: [prompt] };
+        return { program: agent.command, args: [...(model ? ['-m', model] : []), prompt] };
       default:
         return { program: agent.command, args: [prompt] };
     }
@@ -100,9 +100,9 @@ export function getAgent(id: AgentId): AgentDefinition | null {
   return defaultAgentLoader.get(id);
 }
 
-/** @deprecated Use defaultAgentLoader.resolveCommand(id, prompt) instead. */
-export function resolveAgentCommand(id: AgentId, prompt: string): { program: string; args: string[] } {
-  return defaultAgentLoader.resolveCommand(id, prompt);
+/** @deprecated Use defaultAgentLoader.resolveCommand(id, prompt, model) instead. */
+export function resolveAgentCommand(id: AgentId, prompt: string, model?: string): { program: string; args: string[] } {
+  return defaultAgentLoader.resolveCommand(id, prompt, model);
 }
 
 /** @deprecated Use defaultAgentLoader.resetCache() instead. */

@@ -19,10 +19,15 @@ import { StreamWriter } from '../src/core/dispatcher/stream-writer.js';
 import { InteractivePrompt } from '../src/core/ui/prompt.js';
 import type { AgentId, OrchestrationMode, RunResult } from '../src/types/agent.js';
 import { printJson, EXIT_CODES } from './_shared.js';
+import { loadGatewayConfig, resolveGateway, getEffectiveModel } from '../src/core/gateway/index.js';
+import type { Tier } from '../src/types/gateway.js';
 
 interface RunOptions {
   mode?: string;
   agent?: string;
+  strategy?: string;
+  execution?: string;
+  tier?: string;
   json?: boolean;
   dryRun?: boolean;
   timeout?: string;
@@ -40,6 +45,9 @@ export function createRunCommand(): Command {
     .argument('<input>', 'task description')
     .option('--mode <mode>', 'orchestration mode: single|orchestrator|handoff|review')
     .option('--agent <agent>', 'override agent: claude-code|codex|gemini|opencode|aider')
+    .option('--strategy <name>', 'cost profile: balanced|high_quality|low_cost')
+    .option('--execution <mode>', 'execution mode: single|write_review|write_test_fix')
+    .option('--tier <tier>', 'model tier: economy|standard|premium')
     .option('--json', 'output JSON')
     .option('--dry-run', 'show routing decision without executing')
     .option('--timeout <seconds>', 'agent timeout in seconds (default 120)')
@@ -76,12 +84,10 @@ export function createRunCommand(): Command {
           decision = await routeWithFallback(intent, llm);
         }
 
-        // Auto-detect tech stack and select model
+        // Auto-detect tech stack
         const techStack = TechDetector.detectFrom(process.cwd());
-        const modelSelection = selectModel(decision.agent, intent);
-        const modelArgs = buildModelArgs(modelSelection);
 
-        // Interactive mode: let user choose
+        // Interactive mode: let user choose (before gateway resolution)
         if (options.interactive) {
           const ranked = rankAgents(intent.type, intent.complexity);
           const chosen = await InteractivePrompt.selectAgent(ranked, decision.agent);
@@ -93,13 +99,87 @@ export function createRunCommand(): Command {
           }
         }
 
+        // Model selection (after final agent decision)
+        const modelSelection = selectModel(decision.agent, intent);
+
+        // Gateway: load config and resolve tier→model (after final agent decision)
+        const gateway = loadGatewayConfig();
+        const effectiveTier = (options.tier as Tier) ?? 'standard';
+        const gatewayResult = gateway
+          ? resolveGateway(gateway, decision.agent, effectiveTier)
+          : null;
+
+        // Override model if gateway resolved one
+        const effectiveModel = getEffectiveModel(
+          gateway,
+          decision.agent,
+          effectiveTier,
+          modelSelection.model,
+        );
+        if (effectiveModel.source === 'gateway') {
+          modelSelection.model = effectiveModel.model;
+          modelSelection.reason = `gateway tier=${effectiveModel.tier}`;
+        }
+
         const mode: OrchestrationMode = (options.mode as OrchestrationMode)
           ?? (options.interactive ? await InteractivePrompt.selectMode() : 'single');
+
+        // Guard: --execution / --strategy are planned, reject explicitly
+        const VALID_TIERS = ['economy', 'standard', 'premium'] as const;
+        if (options.execution && options.execution !== 'single') {
+          const msg = `--execution ${options.execution} is not yet implemented. Only 'single' is supported in PR1.`;
+          if (options.json) {
+            printJson({ ok: false, error: { code: 'INPUT_ERROR', message: msg }, warnings: [], diagnostics: [] });
+          } else {
+            console.error(`Error: ${msg}`);
+          }
+          process.exit(EXIT_CODES.input);
+        }
+        if (options.strategy) {
+          console.warn(`Warning: --strategy ${options.strategy} is accepted but not yet wired to execution logic (planned for v0.3).`);
+        }
+        if (options.tier && !VALID_TIERS.includes(options.tier as typeof VALID_TIERS[number])) {
+          const msg = `--tier must be one of: ${VALID_TIERS.join(', ')}. Got '${options.tier}'.`;
+          if (options.json) {
+            printJson({ ok: false, error: { code: 'INPUT_ERROR', message: msg }, warnings: [], diagnostics: [] });
+          } else {
+            console.error(`Error: ${msg}`);
+          }
+          process.exit(EXIT_CODES.input);
+        }
+
+        // Gateway only supports single mode in PR1
+        if (gatewayResult && mode !== 'single') {
+          console.warn(`Warning: Gateway env injection only applies to --mode single in PR1. Mode '${mode}' will use native agent env.`);
+        }
+
+        // Gateway + --acp are mutually exclusive in PR1
+        if (gatewayResult && options.acp) {
+          const msg = 'Gateway injection is not supported with --acp in PR1. Remove --acp or unset SWITCH_API_KEY.';
+          if (options.json) {
+            printJson({ ok: false, error: { code: 'GATEWAY_ACP_CONFLICT', message: msg }, warnings: [], diagnostics: [] });
+          } else {
+            console.error(`Error: ${msg}`);
+          }
+          process.exit(EXIT_CODES.input);
+        }
 
         // --dry-run: only show routing decision
         if (options.dryRun) {
           const ranked = rankAgents(intent.type, intent.complexity);
-          const output = { intent, decision, mode, ranked };
+          const output = {
+            intent,
+            decision,
+            mode,
+            ranked,
+            gateway: gatewayResult?.available === true ? {
+              available: true,
+              tier: effectiveModel.tier,
+              model: effectiveModel.model,
+              modelSource: effectiveModel.source,
+              baseUrl: gateway?.baseUrl,
+            } : { available: false },
+          };
           if (options.json) {
             printJson({ ok: true, data: output, warnings: [], diagnostics: [] });
           } else {
@@ -112,9 +192,20 @@ export function createRunCommand(): Command {
             if (intent.techStack.length > 0) {
               console.log(`  Tech Stack:  ${intent.techStack.join(', ')}`);
             }
-            console.log(`  Model:       ${modelSelection.model} (${modelSelection.reason})`);
+            console.log(`  Model:       ${effectiveModel.model} (${effectiveModel.source}${effectiveModel.source === 'gateway' ? `, tier=${effectiveModel.tier}` : ''})`);
             if (techStack.languages.length > 0) {
               console.log(`  Detected:    ${[...techStack.languages, ...techStack.frameworks].join(', ')}`);
+            }
+            console.log('── Gateway ───────────────────────');
+            if (gatewayResult?.available === true) {
+              console.log(`  Status:      ✓ configured`);
+              console.log(`  Base URL:    ${gateway?.baseUrl}`);
+              console.log(`  Tier:        ${effectiveModel.tier}`);
+              console.log(`  Model:       ${effectiveModel.model}`);
+            } else if (gateway && !gatewayResult?.available) {
+              console.log(`  Status:      ✗ configured but not available for '${decision.agent}' (${gatewayResult?.reason})`);
+            } else {
+              console.log('  Status:      ✗ not configured (set SWITCH_API_KEY)');
             }
             console.log('\n── Agent Ranking ──────────────────');
             for (const r of ranked) {
@@ -135,7 +226,7 @@ export function createRunCommand(): Command {
         const gitGuard = options.noGit ? undefined : new GitGuard();
 
         if (mode === 'single') {
-          await runSingle(decision.agent, input, { timeoutMs, maxMemoryMb, startTime, options, llm, gitGuard });
+          await runSingle(decision.agent, input, { timeoutMs, maxMemoryMb, startTime, options, llm, gitGuard, gatewayEnv: gatewayResult?.available === true ? gatewayResult.env : undefined, effectiveModel: gatewayResult?.available === true ? effectiveModel.model : undefined });
         } else if (mode === 'orchestrator') {
           const agents = ([decision.agent, 'codex', 'gemini'] as AgentId[]).filter(
             (a, i, arr) => arr.indexOf(a) === i,
@@ -204,9 +295,9 @@ export function createRunCommand(): Command {
 async function runSingle(
   agentId: AgentId,
   input: string,
-  ctx: { timeoutMs: number; maxMemoryMb: number; startTime: number; options: RunOptions; llm?: InstanceType<typeof import('../src/core/llm/service.js').LLMService> | null; gitGuard?: GitGuard },
+  ctx: { timeoutMs: number; maxMemoryMb: number; startTime: number; options: RunOptions; llm?: InstanceType<typeof import('../src/core/llm/service.js').LLMService> | null; gitGuard?: GitGuard; gatewayEnv?: Record<string, string>; effectiveModel?: string },
 ): Promise<void> {
-  const { program, args } = resolveAgentCommand(agentId, input);
+  const { program, args } = resolveAgentCommand(agentId, input, ctx.effectiveModel);
   const pm = new ProcessManager();
 
   // ACP mode: use ACPBridge instead of direct spawn
@@ -244,6 +335,7 @@ async function runSingle(
     maxMemoryMb: ctx.maxMemoryMb,
     command: program,
     gitGuard: ctx.gitGuard,
+    gatewayEnv: ctx.gatewayEnv,
     onChunk: writer ? (chunk) => writer!.writeChunk(chunk) : undefined,
   });
 

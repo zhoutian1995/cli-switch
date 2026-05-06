@@ -101,6 +101,20 @@ SWITCH_BASE_URL=https://your-gateway
 
 ### 3.2 ❗ Agent ≠ 模型
 
+### 3.3 PR1 Gateway 支持范围
+
+PR1（Gateway 注入层）**只支持两个 Agent 的 Gateway 路由**：
+
+| Agent | Gateway 支持 | env 覆盖 | model 参数 |
+|-------|-------------|----------|-----------|
+| claude-code | ✅ | ANTHROPIC_API_KEY → gateway key, ANTHROPIC_BASE_URL → gateway url | `--model <gateway-model>` |
+| codex | ✅ | OPENAI_API_KEY → gateway key, OPENAI_BASE_URL → gateway url | `-m <gateway-model>` |
+| gemini | ❌ PR1 不做 | 不覆盖 | 不传 model |
+
+Gemini / OpenCode / Aider 的 Gateway 支持留给后续版本（v0.2+）。
+
+**PR1 Gateway 只在 `--mode single` 下生效**。orchestrator / handoff / review 模式仍使用 Agent 原生环境变量。
+
 ```
 Claude Code ≠ Claude 模型
 Codex CLI   ≠ OpenAI 模型

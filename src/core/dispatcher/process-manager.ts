@@ -41,6 +41,8 @@ export class ProcessManager {
       timeoutMs?: number;
       maxMemoryMb?: number;
       env?: Record<string, string>;
+      /** Gateway env vars (highest priority, overrides native API keys). */
+      gatewayEnv?: Record<string, string>;
       /** Override the executable binary (for testing). */
       command?: string;
       /** Optional Git guard for branch/checkpoint management */
@@ -82,7 +84,7 @@ export class ProcessManager {
     return new Promise<AgentProcess>((resolve) => {
       const proc = spawn(command, args, {
         cwd: options?.cwd,
-        env: { ...process.env, ...options?.env },
+        env: { ...process.env, ...options?.env, ...options?.gatewayEnv },
         // Resource limits — rssBytes is soft limit on macOS (Node ≥22)
         ...(options?.maxMemoryMb
           ? { resourceLimits: { maxOldGenerationSizeMb: options.maxMemoryMb } }
