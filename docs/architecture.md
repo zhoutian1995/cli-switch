@@ -5,6 +5,51 @@
 > 本文档聚焦**设计决策与为什么**，具体配置详见各 spec 文档。
 >
 > 更新日期：2026-05-06
+>
+> **状态说明**：本文档同时记录当前 v0.3.0 代码架构和 PRD v2.0 目标架构。未标注“当前已实现”的 Capability / Strategy / Sandbox 能力均为 v2.0 目标设计，不代表当前运行路径已经具备。
+
+---
+
+## 零、当前实现基线（v0.3.0）
+
+当前代码已经形成一套可运行的 CLI Agent 调度基础架构，核心链路不是 Capability / Strategy 引擎，而是：
+
+```
+CLI 命令
+  ↓
+Intent Parser（规则优先，存在 OpenRouter LLM 增强路径）
+  ↓
+Router（LLM-first 可选，规则 fallback）
+  ↓
+ProcessManager / ACPBridge
+  ↓
+Agent 子进程
+  ↓
+RunResult / JSON Envelope
+```
+
+当前已实现模块：
+
+| 模块 | 当前代码路径 | 职责 |
+|------|-------------|------|
+| CLI 命令层 | `cmd/root.ts` | 注册 `resolve` / `env` / `auth` / `doctor` / `list` / `run` / `capabilities` / `benchmark` |
+| 运行时解析 | `src/core/resolver/*` | 将 tool/profile/model/provider/vendor/transport 解析为 `RuntimeSpec` |
+| Registry | `src/registry/*`, `src/registry/builtins/*.toml` | 加载内置 TOML，并与用户 override 合并 |
+| Adapter | `src/adapters/*` | 为 Claude Code / Codex / Gemini 解析模型、认证和命令参数 |
+| 调度 | `src/core/dispatcher/process-manager.ts` | 启动 Agent 子进程、超时、并发队列、stdout/stderr 收集 |
+| ACP 可选桥 | `src/core/dispatcher/acp-bridge.ts` | `--acp` 模式下使用 JSON-RPC over stdio 通信 |
+| Git 安全 | `src/core/git/guard.ts` | 创建 agent 分支、checkpoint、提交 agent 变更、基础 diff/secret 检查 |
+
+当前内置可执行 Agent registry 包含：
+
+| Agent | 当前状态 |
+|-------|----------|
+| `claude-code` | 内置 tool / adapter / profiles |
+| `codex` | 内置 tool / adapter / profiles |
+| `gemini` | 内置 tool / adapter / profiles |
+| `opencode` / `aider` | 类型和能力矩阵中有预留，但未在 builtins 中注册为可解析 tool |
+
+当前 `run` 命令支持的编排模式是 `single | orchestrator | handoff | review`，对应 `cmd/run.ts` 中的 `--mode`。PRD 中的 `single | write_review | write_test_fix` 是 v2.0 Capability/Strategy 引擎的目标执行模式，尚未接入当前运行路径。
 
 ---
 
@@ -245,6 +290,51 @@ Agent 写操作受严格限制：
 
 ## 二、适配器层
 
+### 2.0 当前 Registry / Resolver / Adapter 架构
+
+当前代码的模型、provider、认证和命令构造不通过 tier/gateway 配置完成，而通过 Registry + Resolver + Adapter 三段完成。
+
+```
+loadBuiltins()
+  ↓
+loadUserOverrides(configDir)
+  ↓
+mergeRegistry()
+  ↓
+createResolverService()
+  ↓
+adapter.resolve_model / resolve_auth / build_command
+  ↓
+RuntimeSpec
+```
+
+Registry 由 TOML 文件驱动：
+
+| 文件 | 内容 |
+|------|------|
+| `src/registry/builtins/tools.toml` | tool 定义、默认 profile、adapter 归属 |
+| `src/registry/builtins/profiles.toml` | profile、默认模型、默认 vendor/transport、认证模式、约束 |
+| `src/registry/builtins/models.toml` | 模型 alias 到真实模型名、family、vendor、capabilities |
+| `src/registry/builtins/providers.toml` | provider、vendor、transport、authMode、支持的 tools |
+| `src/registry/builtins/transports.toml` | native/api 等 transport 定义 |
+
+Resolver 当前会执行以下校验：
+- tool 是否存在
+- profile 是否存在
+- platform / binary 约束
+- model alias 是否存在
+- requested provider/vendor/transport 与模型、profile、provider 是否冲突
+- profile required/disallowed capabilities 是否满足
+
+Adapter 当前职责：
+- `resolve_model`：处理 adapter 专属模型 alias 和 fallback
+- `resolve_auth`：检测 login/api_key 等认证状态
+- `build_command`：生成最终可执行命令和参数
+- `apply_skills` / `apply_mcp` / `apply_tool_policy`：对 capability flags 做 adapter 补丁
+- `doctor`：提供 adapter 认证检查
+
+这一层是当前生产代码的核心运行时解析架构。PRD v2.0 的 tier/gateway 能力应在不破坏该 Resolver 契约的前提下扩展。
+
 ### 2.1 ACP 协议
 
 cli-switch 和 Agent（Claude Code / Codex）之间的目标标准对话层基于 **ACP（Agent Client Protocol）**，使用 **NDJSON（Newline-Delimited JSON）over stdio** 通信。
@@ -253,8 +343,9 @@ cli-switch 和 Agent（Claude Code / Codex）之间的目标标准对话层基�
 - ACP 作为优先协议层；Agent 原生不支持 ACP 时，使用进程适配器桥接 stdout/stderr/stdin。
 - `@agentclientprotocol/sdk` 是目标协议依赖，正式引入前需在实现计划中明确版本、API 面和 fallback 行为。
 - 适配器层不得假设所有 Agent 都天然支持 ACP。
+- 当前代码只有本地 `ACPBridge`，实现 JSON-RPC 2.0 over stdio；没有引入 `@agentclientprotocol/sdk`，也没有 `generic-acp-agent.ts` / `agent-sdk-types.ts` 等 Paseo 文件。
 
-| 模块 | Paseo 源文件 | 行数 | cli-switch 怎么用 |
+| 模块 | Paseo 源文件 | 行数 | cli-switch v2.0 怎么用 |
 |------|-------------|------|------------------|
 | ACP 完整实现 | `acp-agent.ts` | 2511 | 直接搬，精简掉 UI 相关部分 |
 | 通用 ACP 适配器 | `generic-acp-agent.ts` | 38 | **核心**：一行配置接入新 Agent |
@@ -271,29 +362,37 @@ cli-switch 和 Agent（Claude Code / Codex）之间的目标标准对话层基�
 
 ```
 claude-code adapter
-  ├── 继承 GenericACP 基础通信层
-  ├── 实现特有消息解析（Claude 的 tool_use / text 输出格式）
-  ├── 实现流式处理（Claude 的 content_block_delta 事件）
-  └── 长上下文支持（200K tokens）
+  ├── 当前：解析 auth/model/command，构造 `claude --model <model>`
+  ├── 当前：login profile 使用 native auth，api profile 使用 ANTHROPIC_API_KEY
+  ├── 当前：声明 mcp/toolPolicy capability patch
+  └── v2.0：接入 ACP / Capability prompt / 输出校验
 ```
 
-- 源文件：`claude-agent.ts`（4611 行）
-- 适配内容：核心逻辑搬入，去掉 Paseo 特有依赖
+- 当前源文件：`src/adapters/claude-code/index.ts`
+- Paseo 参考源文件：`claude-agent.ts`（4611 行）
 - 定位：重型执行器，擅长长上下文、复杂推理、架构级任务
 
 ### 2.3 Codex 适配器
 
 ```
 codex adapter
-  ├── 继承 GenericACP 基础通信层
-  ├── 实现特有消息解析（Codex 的 message 格式）
-  ├── 实现流式处理（Codex 的 stream 事件）
-  └── 快速执行优化
+  ├── 当前：解析 auth/model/command，构造 `codex --model <model>`
+  ├── 当前：api_key profile 使用 OPENAI_API_KEY
+  └── v2.0：接入 ACP / Capability prompt / 输出校验
 ```
 
-- 源文件：`codex-app-server-agent.ts`（4821 行）
-- 适配内容：核心逻辑搬入，去掉 Paseo 特有依赖
+- 当前源文件：`src/adapters/codex/index.ts`
+- Paseo 参考源文件：`codex-app-server-agent.ts`（4821 行）
 - 定位：轻型执行器，擅长快速生成、测试、简单任务
+
+### 2.3.1 Gemini 适配器（当前已实现）
+
+当前代码还包含 `src/adapters/gemini/index.ts`：
+- 默认模型 alias：`gemini-3.1-pro`
+- 认证环境变量：`GEMINI_API_KEY`
+- 命令构造：`gemini --model <resolvedName>`
+
+Gemini 不在 PRD v2.0 的核心双 Agent 验证范围内，但已经是当前 registry/resolver 的内置 tool。
 
 ### 2.4 GenericACP 通用适配器（一行配置接入）
 
@@ -331,6 +430,26 @@ const agent = new GenericACPAgent({
 
 ### 3.1 主链路流程
 
+当前 `run` 主链路：
+
+```
+用户输入
+  ↓
+parseIntent（OpenRouter 可选；失败后规则解析）
+  ↓
+routeWithFallback（LLM-first 可选；失败后规则路由）
+  ↓
+selectModel / buildModelArgs
+  ↓
+ProcessManager.spawnAgent 或 ACPBridge
+  ↓
+buildResult / fallback suggestion
+  ↓
+文本输出或 JSON Envelope
+```
+
+v2.0 目标主链路：
+
 ```
 用户 / Agent 输入
   ↓
@@ -354,6 +473,17 @@ Agent 路由（选 Claude Code 或 Codex）
 ```
 
 ### 3.2 Strategy 引擎
+
+当前代码没有实现本节描述的 Capability/Strategy 引擎。现有 `--mode` 是 Agent 编排模式：
+
+| 当前 `--mode` | 行为 |
+|---------------|------|
+| `single` | 单 Agent 执行 |
+| `orchestrator` | 多 Agent 并行/编排执行 |
+| `handoff` | 一个 Agent 到另一个 Agent 的上下文接力 |
+| `review` | 主 Agent 产出 + reviewer Agent 审查 |
+
+下面的 `write_review` / `write_test_fix` / Loop 是 PRD v2.0 目标执行模式。
 
 Strategy 不是描述性文字，是**结构化执行规则**，必须定义每一步的行为和流转条件。
 

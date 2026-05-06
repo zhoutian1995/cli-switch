@@ -7,10 +7,73 @@
 > **下游**：实现层的路由引擎、策略引擎、配置管理模块
 >
 > **关系**：本 spec 是 PRD 路由相关章节的结构化提取和细化，为路由引擎和策略引擎的设计提供精确规则定义。
+>
+> **状态说明**：本文档包含当前 v0.3.0 路由实现和 PRD v2.0 目标路由。当前代码以 intent type + agent ranking + registry model resolution 为主；tier/gateway/capability routing 是 v2.0 目标。
+
+---
+
+## 0. 当前实现基线（v0.3.0）
+
+当前 `run` 路由链路：
+
+```
+parseIntent(input, optional OpenRouter config)
+  ↓
+routeWithFallback(intent, optional LLMService)
+  ↓
+selectModel(agent, intent)
+  ↓
+resolveAgentCommand(agent, input)
+  ↓
+ProcessManager / ACPBridge
+```
+
+当前 intent taxonomy 不是 `write_code` / `fix_error` 等 Capability，而是中文任务类型：
+
+| 当前 TaskIntent.type | 触发关键词示例 |
+|----------------------|----------------|
+| `代码生成` | 默认类型 |
+| `重构` | refactor / 重构 |
+| `调试` | debug / fix / bug / 调试 / 修复 |
+| `测试` | test / spec / 测试 |
+| `解释` | explain / what / why / 解释 / 说明 |
+
+当前 Auto 路由是 LLM-first 可选：
+- 如果存在 `OPENROUTER_API_KEY`，`run` 会用 OpenRouter 做 intent 解析和 LLM 路由增强。
+- LLM 调用失败或未配置时，回退到规则路由。
+- 规则路由：长上下文、调试、跨仓库复杂度倾向 Claude Code；测试倾向 Codex；默认 Claude Code。
+
+当前模型解析分两条路径：
+- `run` 路径使用 `src/core/router/model-selector.ts` 的 agent/intent 模型选择。
+- `resolve` 路径使用 Registry / Resolver，根据 tool/profile/model/provider/vendor/transport 生成 `RuntimeSpec`。
+
+当前 Registry 支持的内置 tools：
+
+| Tool | 默认 profile | 默认模型来源 |
+|------|--------------|--------------|
+| `claude-code` | `default` / `api` | `src/registry/builtins/profiles.toml` + adapter alias |
+| `codex` | `default` | `src/registry/builtins/profiles.toml` + adapter alias |
+| `gemini` | `default` | `src/registry/builtins/profiles.toml` + adapter alias |
+
+## 0.1 当前到 v2 Capability 的映射
+
+v2.0 应在当前 intent taxonomy 之上增加 Capability 归一层：
+
+| 当前 TaskIntent.type | 默认 v2 Capability | 备注 |
+|----------------------|--------------------|------|
+| `代码生成` | `write_code` | 需要根据任务是否只读进一步细分 |
+| `重构` | `refactor` | 当前路由偏 Claude Code |
+| `调试` | `analyze` 或 `fix_error` | 需要根据是否允许改文件判断 |
+| `测试` | `write_tests` 或 `run_tests` | 需要根据是否提供 test command 判断 |
+| `解释` | `explain` | 只读能力 |
+
+Capability 归一后，才能启用后文的 `capability_tier_override`、Strategy 选择和输出 schema。
 
 ---
 
 ## 1. Tier 系统
+
+> v2.0 目标：当前代码尚未实现 `economy / standard / premium` tier 配置，也未实现 `SWITCH_API_KEY` / `SWITCH_BASE_URL` gateway-only 路由。当前代码使用 registry profile 默认模型、adapter model alias，以及 Agent 原生命令的认证环境变量。
 
 ### 1.1 Tier 定义
 
@@ -61,6 +124,8 @@ routing:
 
 ## 2. Auto 模式路由规则
 
+> v2.0 目标：本节描述 Capability 归一后的目标路由。当前实现见“0. 当前实现基线”。
+
 ### 2.1 能力识别规则映射表
 
 输入：用户任务关键词 / 特征
@@ -78,7 +143,7 @@ routing:
 
 ### 2.2 Agent 路由规则（Auto 模式）
 
-MVP 规则路由（不依赖 LLM）：
+v2.0 目标规则路由（不依赖 LLM）：
 
 | 条件 | Agent | 理由 |
 |------|-------|------|

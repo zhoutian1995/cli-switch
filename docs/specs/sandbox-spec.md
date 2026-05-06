@@ -7,10 +7,41 @@
 > **下游**：实现层的沙盒管理模块、进程启动模块、配置管理模块
 >
 > **关系**：本 spec 是 PRD 沙盒相关章节的结构化提取和细化，为沙盒隔离的实现提供精确规格定义。
+>
+> **状态说明**：本文档的 HOME 隔离、patch-only 文件策略和 gateway 环境隔离是 PRD v2.0 目标。当前 v0.3.0 代码尚未实现完整沙盒；当前安全边界主要来自子进程超时/资源限制和 GitGuard。
+
+---
+
+## 0. 当前安全基线（v0.3.0）
+
+当前 `ProcessManager.spawnAgent()` 的真实行为：
+- 使用真实工作目录或调用方传入的 `cwd`
+- 子进程环境为 `{ ...process.env, ...options.env }`
+- 不重写 `HOME`
+- 不创建 `/tmp/cli-switch-{task_id}/home`
+- 不阻止 Agent 直接读写项目文件
+- 不强制 patch-only 输出
+- 支持 timeout 后 `SIGKILL`
+- 支持最大并发队列
+- stdout/stderr 有最大 10MB 缓冲裁剪
+
+当前 GitGuard 安全模型：
+- 可在 Agent 执行前创建 `agent/<task>-<timestamp>` 分支
+- 可创建 checkpoint commit
+- Agent 完成后可自动提交变更
+- 可检查 diff 规模、二进制文件、受保护文件名和常见 secret pattern
+- 可列出和清理旧 agent 分支
+
+重要边界：
+- GitGuard 是版本控制安全网，不是文件系统沙盒。
+- 当前真实项目目录如果暴露给可写 Agent，Agent 仍可能直接修改文件。
+- v2.0 的 HOME 隔离、临时项目副本、patch apply 校验上线前，不应把当前实现描述为强沙盒。
 
 ---
 
 ## 1. 环境隔离
+
+> v2.0 目标：当前代码尚未实现本章描述的 `SWITCH_API_KEY` / `SWITCH_BASE_URL` gateway 环境隔离。当前 adapter 使用 Agent 原生环境变量，例如 `ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`GEMINI_API_KEY`。
 
 ### 1.1 核心约束
 

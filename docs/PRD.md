@@ -287,6 +287,44 @@ v2.0 不暴露显式 MCP Agent-to-Agent 能力。多 Agent 协作只通过 Strat
 
 ## 七、CLI 命令
 
+### 当前命令面（v0.3.0）
+
+当前 `cmd/root.ts` 注册的命令：
+
+```bash
+cli-switch resolve       # 解析 tool/profile/model 为 RuntimeSpec
+cli-switch env           # 查看环境与配置
+cli-switch auth status   # 检查认证状态（需要 --tool）
+cli-switch doctor        # 诊断工具、认证、环境
+cli-switch list          # 列出 models / providers / profiles
+cli-switch run           # 智能路由并执行 Agent
+cli-switch capabilities  # 查看 Agent 能力矩阵
+cli-switch benchmark     # 跨 Agent 性能基准
+```
+
+当前 `run` 选项：
+
+```bash
+cli-switch run <任务描述> [选项]
+
+--mode <mode>        当前编排模式: single | orchestrator | handoff | review
+--agent <agent>      指定 Agent: claude-code | codex | gemini | opencode | aider
+--json               JSON 输出
+--dry-run            只看路由决策
+--timeout <秒>       Agent 超时时间
+--reviewer <agent>   review 模式的审查 Agent
+--no-git             跳过 GitGuard
+--rollback           失败时尝试回滚
+--stream             实时流式输出
+--no-stream          关闭流式输出
+--interactive        交互式选择 Agent / mode
+--acp                使用 JSON-RPC over stdio 的 ACPBridge
+```
+
+当前命令面没有 `config show/set/reset`，也没有 `run --profile` / `run --execution` / `run --verify` / `run --max-iterations` / `run --cwd`。
+
+### v2.0 目标命令面
+
 ### 核心命令
 
 ```bash
@@ -307,7 +345,7 @@ cli-switch run <任务描述> [选项]
 --cwd <路径>              工作目录
 ```
 
-### 配置命令
+### v2.0 目标配置命令
 
 ```bash
 cli-switch config show          # 显示当前配置
@@ -315,12 +353,12 @@ cli-switch config set <key> <v> # 修改配置
 cli-switch config reset         # 重置为默认
 ```
 
-### 诊断命令
+### v2.0 目标诊断命令
 
 ```bash
 cli-switch doctor               # 综合诊断
-cli-switch auth status          # 检查网关连接
-cli-switch list agents          # 列出可用 Agent
+cli-switch auth status --tool <tool> # 检查指定 tool 的认证状态
+cli-switch capabilities         # 列出 Agent 能力矩阵
 cli-switch list models          # 列出网关可用模型
 ```
 

@@ -7,10 +7,101 @@
 > **下游**：实现层的执行引擎、策略引擎、校验模块
 >
 > **关系**：本 spec 是 PRD 运行时相关章节的结构化提取和细化，为架构设计和编码提供精确的数据结构定义。
+>
+> **状态说明**：Capability 输出 schema、execution_state、diff 校验和 auto-repair 是 PRD v2.0 目标运行时。当前 v0.3.0 代码已经实现 CLI JSON Envelope、Resolver `RuntimeSpec`、`RunResult` 和基础错误 envelope，但尚未实现 Capability 级输出校验与 Loop 状态机。
+
+---
+
+## 0. 当前运行时基线（v0.3.0）
+
+### 0.1 CLI JSON Envelope
+
+当前所有支持 `--json` 的命令通过统一 envelope 输出：
+
+```ts
+{
+  schema_version: "v1alpha1",
+  ok: boolean,
+  data?: unknown,
+  error?: {
+    code: string,
+    message: string,
+    hint?: string,
+    details?: Record<string, unknown>
+  },
+  warnings: string[],
+  diagnostics: Diagnostic[]
+}
+```
+
+该结构由 `cmd/_shared.ts` 构造，是当前对外稳定 JSON 协议的基础。
+
+### 0.2 Resolve RuntimeSpec
+
+当前 `cli-switch resolve` 的核心输出是 `RuntimeSpec`：
+
+```ts
+{
+  tool: string,
+  profile: string,
+  adapter: string,
+  model: {
+    input?: string,
+    resolvedName: string,
+    family: string,
+    vendor: string,
+    provider?: string,
+    transport?: string,
+    capabilities: string[]
+  },
+  provider: {
+    name: string,
+    vendor: string,
+    transport: string
+  },
+  auth: AuthResult,
+  command: {
+    program: string,
+    args: string[],
+    env: Record<string, string>,
+    cwd?: string,
+    preview: string
+  },
+  capabilities: CapabilityFlags
+}
+```
+
+Resolver 当前负责严格处理：
+- `TOOL_NOT_FOUND`
+- `MODEL_NOT_FOUND`
+- `ADAPTER_NOT_FOUND`
+- `PLATFORM_UNSUPPORTED`
+- `BINARY_NOT_FOUND`
+- `RESOLVE_CONFLICT`
+
+### 0.3 RunResult
+
+当前 `cli-switch run` 返回的是 Agent 进程级结果，不是 Capability 级结果：
+
+```ts
+{
+  ok: boolean,
+  agent: "claude-code" | "codex" | "gemini" | "opencode" | "aider",
+  output: string,
+  exitCode?: number,
+  durationMs: number,
+  fallback?: boolean,
+  suggestedFallback?: AgentId
+}
+```
+
+当前 runner 不解析 unified diff，不执行 Capability-specific Zod schema，不维护 `execution_state`，也没有 diff auto-repair pipeline。
 
 ---
 
 ## 1. JSON Schema 定义
+
+> v2.0 目标：本章定义 Capability/Strategy 引擎上线后的输出契约。
 
 ### 1.1 Output Validation Schema
 
