@@ -1,4 +1,5 @@
 import type { AuthResult } from '../../types/auth.js';
+import { createDoctor } from '../base.js';
 import type {
   EffectiveRegistry,
   ProfileDefinition,
@@ -123,28 +124,5 @@ export const geminiAdapter: CliAdapter = {
     return {};
   },
 
-  doctor(input: AdapterDoctorInput): DoctorCheck[] {
-    const checks: DoctorCheck[] = [];
-
-    const binaryPath = input.platform.findExecutable(input.tool.binaryNames);
-    checks.push({
-      name: 'binary',
-      status: binaryPath ? 'pass' : 'fail',
-      message: binaryPath
-        ? `Found at ${binaryPath}`
-        : `Binary not found. Searched: ${input.tool.binaryNames.join(', ')}`,
-      ...(binaryPath ? { details: { path: binaryPath } } : {}),
-    });
-
-    const authResult = checkAuth(input);
-    const authStatus: 'pass' | 'warn' | 'fail' =
-      authResult.status === 'ready' ? 'pass' : authResult.status === 'missing' ? 'fail' : 'warn';
-    checks.push({
-      name: 'auth',
-      status: authStatus,
-      message: authResult.hint,
-    });
-
-    return checks;
-  },
+  doctor: createDoctor(checkAuth),
 };
