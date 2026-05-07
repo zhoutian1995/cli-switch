@@ -7,7 +7,7 @@ AI Agent 编排 CLI — 智能路由、多 Agent 调度、结构化输出。
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6+-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![Tests](https://img.shields.io/badge/tests-196%20passed-green.svg)](https://github.com/zhoutian1995/cli-switch)
+[![Tests](https://img.shields.io/badge/tests-308%20passed-green.svg)](https://github.com/zhoutian1995/cli-switch)
 
 ## 安装
 
@@ -57,7 +57,10 @@ cli-switch run <任务描述> [选项]
 
 选项：
   --mode <mode>         编排模式: single | orchestrator | handoff | review
-  --agent <agent>       指定 Agent: claude-code | codex | gemini | opencode | aider
+  --agent <agent>       指定 Agent: claude-code | codex
+  --strategy <name>     成本策略: balanced | high_quality | low_cost
+  --execution <mode>    执行模式: single | write_review | write_test_fix
+  --tier <tier>         模型档位: economy | standard | premium
   --dry-run             只看路由决策
   --interactive, -i     交互式选择
   --stream              流式输出（默认开启）
@@ -120,9 +123,6 @@ cli-switch run "任务描述"
 |-------|------|------|
 | Claude Code | `claude` | 重构、调试、长上下文（200K） |
 | Codex CLI | `codex` | 测试生成、快速执行 |
-| Gemini CLI | `gemini` | 多模态、超长上下文（1M） |
-| OpenCode | `opencode` | 通用开发 |
-| Aider | `aider` | 代码补全 |
 
 ## 编排模式
 
@@ -145,7 +145,7 @@ src/core/
   git/            Git 守卫、Secret 检测
   llm/            LLM 服务
   ui/             交互式提示
-src/adapters/     Agent 适配器（Claude Code / Codex / Gemini）
+src/adapters/     Agent 适配器（Claude Code / Codex）
 src/registry/     模型/Provider/Profile 注册表（TOML）
 src/platform/     平台抽象（路径、环境、文件系统）
 src/types/        TypeScript 类型定义
@@ -158,7 +158,7 @@ test/             测试（单元、契约、E2E、压力）
 ```bash
 npm run build          # 构建
 npm run dev            # watch 模式
-npm test               # 全部测试（196 个）
+npm test               # 全部测试（308 个）
 npm run smoke          # 安装后验证测试（9 个）
 npm run lint           # 类型检查
 ```
@@ -166,7 +166,7 @@ npm run lint           # 类型检查
 ## 前置依赖
 
 - Node.js >= 18.0.0
-- 需要至少一个 AI CLI 已安装：`claude` / `codex` / `gemini`
+- 需要至少一个 AI CLI 已安装：`claude` / `codex`
 - LLM 路由需要设置 `OPENROUTER_API_KEY`（可选，不设则用规则路由）
 
 ## 许可证
