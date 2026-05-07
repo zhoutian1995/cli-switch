@@ -34,15 +34,3 @@ authMode = "api_key"
 
 [codex.default.constraints]
 requiresEnv = ["OPENAI_API_KEY"]
-
-[gemini.default]
-tool = "gemini"
-name = "default"
-description = "Default profile"
-defaultModel = "gemini-3.1-pro"
-defaultVendor = "google"
-defaultTransport = "native"
-authMode = "api_key"
-
-[gemini.default.constraints]
-requiresEnv = ["GOOGLE_API_KEY"]

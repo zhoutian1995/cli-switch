@@ -12,16 +12,9 @@ transports = ["native", "api"]
 authModes = ["api_key"]
 supportedTools = ["codex"]
 
-[google]
-id = "google"
-vendor = "google"
-transports = ["native", "api"]
-authModes = ["api_key"]
-supportedTools = ["gemini"]
-
 [zhipu]
 id = "zhipu"
 vendor = "zhipu"
 transports = ["api"]
 authModes = ["api_key"]
-supportedTools = ["claude-code", "codex", "gemini"]
+supportedTools = ["claude-code", "codex"]

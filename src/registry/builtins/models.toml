@@ -25,10 +25,3 @@ resolvedName = "gpt-5.4"
 family = "gpt"
 vendor = "openai"
 capabilities = ["chat", "code", "reasoning"]
-
-["gemini-3.1-pro"]
-alias = "gemini-3.1-pro"
-resolvedName = "gemini-3.1-pro-preview"
-family = "gemini"
-vendor = "google"
-capabilities = ["chat", "code", "image_input"]

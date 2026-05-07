@@ -73,7 +73,7 @@ export class AgentLoader {
       case 'claude-code':
         return { program: agent.command, args: [...(model ? ['--model', model] : []), '--print', prompt] };
       case 'codex':
-        return { program: agent.command, args: [...(model ? ['-m', model] : []), prompt] };
+        return { program: agent.command, args: ['exec', ...(model ? ['-m', model] : []), prompt] };
       default:
         return { program: agent.command, args: [prompt] };
     }

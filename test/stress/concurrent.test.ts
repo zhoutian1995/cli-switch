@@ -14,7 +14,7 @@ describe('ProcessManager concurrency', () => {
     const promises = [
       pm.spawnAgent('claude-code', ['task1'], { timeoutMs: 5000, command: 'echo' }),
       pm.spawnAgent('codex', ['task2'], { timeoutMs: 5000, command: 'echo' }),
-      pm.spawnAgent('gemini', ['task3'], { timeoutMs: 5000, command: 'echo' }),
+      pm.spawnAgent('claude-code', ['task3'], { timeoutMs: 5000, command: 'echo' }),
     ];
     const results = await Promise.all(promises);
     const elapsed = Date.now() - start;

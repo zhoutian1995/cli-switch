@@ -15,12 +15,3 @@ command = "codex"
 defaultProfile = "default"
 binaryNames = ["codex"]
 supportedPlatforms = ["darwin", "linux"]
-
-[gemini]
-id = "gemini"
-displayName = "Gemini CLI"
-adapter = "gemini"
-command = "gemini"
-defaultProfile = "default"
-binaryNames = ["gemini"]
-supportedPlatforms = ["darwin", "linux"]

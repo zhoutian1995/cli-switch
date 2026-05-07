@@ -107,8 +107,9 @@ export const codexAdapter: CliAdapter = {
 
   build_command(input: BuildCommandInput): CommandSpec {
     const program = 'codex';
-    const args = ['--model', input.model.resolvedName];
-    const preview = `${program} --model ${input.model.resolvedName}`;
+    // Use 'exec' subcommand for non-interactive mode (avoids TTY check)
+    const args = ['exec', '--model', input.model.resolvedName];
+    const preview = `${program} exec --model ${input.model.resolvedName}`;
 
     return {
       program,

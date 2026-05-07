@@ -15,12 +15,3 @@ supportedModes = ["single"]
 capabilities = ["fast_generation", "code_completion"]
 maxMemoryMb = 512
 timeoutMs = 120000
-
-[gemini]
-id = "gemini"
-command = "gemini"
-args = ""
-supportedModes = ["single"]
-capabilities = ["multimodal", "image_input"]
-maxMemoryMb = 512
-timeoutMs = 120000

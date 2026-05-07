@@ -6,7 +6,6 @@ describe('agent-loader', () => {
     const agents = loadAgents();
     expect(Object.keys(agents)).toContain('claude-code');
     expect(Object.keys(agents)).toContain('codex');
-    expect(Object.keys(agents)).toContain('gemini');
   });
 
   it('gets specific agent', () => {
@@ -29,7 +28,7 @@ describe('agent-loader', () => {
   it('resolves codex command', () => {
     const cmd = resolveAgentCommand('codex', 'hello');
     expect(cmd.program).toBe('codex');
-    expect(cmd.args).toEqual(['hello']);
+    expect(cmd.args).toEqual(['exec', 'hello']);
   });
 
   it('resolves unknown agent with default', () => {

@@ -119,7 +119,7 @@ describe('text renderers', () => {
 
   it('renderDoctorResult prints summary and checks', () => {
     const input = {
-      tool: 'gemini',
+      tool: 'codex',
       profile: 'default',
       summary: {
         status: 'fail' as const,
@@ -142,7 +142,7 @@ describe('text renderers', () => {
 
     expect(renderDoctorResult(input)).toMatchInlineSnapshot(`
       "Doctor Result
-      Tool: gemini
+      Tool: codex
       Profile: default
       Summary: 2 pass, 1 warn, 1 fail, 4 total
       
