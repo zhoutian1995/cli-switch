@@ -453,7 +453,7 @@ async function runSingle(
     while (!result.ok && attempts < 2) {
       const fb = suggestFallback(currentAgent, result.output);
       if (!fb) break;
-      const fbCmd = resolveAgentCommand(fb, input);
+      const fbCmd = resolveAgentCommand(fb, input, ctx.effectiveModel);
       const fbProc = await pm.spawnAgent(fb, fbCmd.args, {
         timeoutMs: ctx.timeoutMs,
         maxMemoryMb: ctx.maxMemoryMb,

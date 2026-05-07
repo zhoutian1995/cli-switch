@@ -113,10 +113,14 @@ export class ProcessManager {
         settled = true;
         if (timer) clearTimeout(timer);
         this.processes.delete(id);
-        void sandbox.cleanup().finally(() => {
-          releaseSlot();
-          resolve(finalInfo);
-        });
+        void sandbox.cleanup()
+          .catch((err) => {
+            finalInfo.stderr += `\n[sandbox cleanup] ${err instanceof Error ? err.message : String(err)}`;
+          })
+          .finally(() => {
+            releaseSlot();
+            resolve(finalInfo);
+          });
       };
 
       let proc: ChildProcess;
