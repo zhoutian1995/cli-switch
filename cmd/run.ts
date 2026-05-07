@@ -235,6 +235,9 @@ export function createRunCommand(): Command {
               const marker = r.agent === decision.agent ? ' ← selected' : '';
               console.log(`  ${r.agent.padEnd(14)} score=${r.score}  (${r.reason})${marker}`);
             }
+            if (ranked.length > 0 && ranked[0].agent !== decision.agent) {
+              console.log(`  ℹ ${decision.agent} selected by capability routing (${decision.reason}), overriding ranking`);
+            }
           }
           return;
         }
