@@ -12,7 +12,6 @@ const MAX_STREAM_SIZE = 10 * 1024 * 1024;
 const AGENT_COMMAND_MAP: Record<string, string> = {
   'claude-code': 'claude',
   codex: 'codex',
-  gemini: 'gemini',
 };
 
 export class ProcessManager {

@@ -2,7 +2,7 @@
 
 import type { CapabilityId } from './capability.js';
 
-export type AgentId = 'claude-code' | 'codex' | 'gemini' | 'opencode' | 'aider';
+export type AgentId = 'claude-code' | 'codex';
 
 export interface TaskIntent {
   type: string;

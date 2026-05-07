@@ -3,7 +3,6 @@ import { Command } from 'commander';
 import {
   claudeCodeAdapter,
   codexAdapter,
-  geminiAdapter,
 } from '../src/adapters/index.js';
 import { createAuthService } from '../src/core/auth/index.js';
 import { createDoctorService } from '../src/core/doctor/index.js';
@@ -34,7 +33,6 @@ function runDoctor(options: DoctorOptions): CommandDoctorResult[] {
   const adapters = {
     [claudeCodeAdapter.id()]: claudeCodeAdapter,
     [codexAdapter.id()]: codexAdapter,
-    [geminiAdapter.id()]: geminiAdapter,
   };
   createResolverService(registry, adapters);
   createAuthService(platform);

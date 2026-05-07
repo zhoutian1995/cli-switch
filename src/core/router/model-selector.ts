@@ -29,16 +29,6 @@ const DEFAULT_MODEL_MAP: Record<AgentId, ModelInfo[]> = {
     { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', costPerToken: 8, contextWindow: 128000, reasoning: 7, speed: 9 },
     { id: 'o4-mini', label: 'o4-mini', costPerToken: 6, contextWindow: 128000, reasoning: 9, speed: 6 },
   ],
-  gemini: [
-    { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', costPerToken: 4, contextWindow: 1000000, reasoning: 9, speed: 6 },
-    { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', costPerToken: 9, contextWindow: 1000000, reasoning: 7, speed: 10 },
-  ],
-  opencode: [
-    { id: 'default', label: 'Default', costPerToken: 5, contextWindow: 128000, reasoning: 7, speed: 8 },
-  ],
-  aider: [
-    { id: 'default', label: 'Default', costPerToken: 5, contextWindow: 128000, reasoning: 7, speed: 8 },
-  ],
 };
 
 /** Registry-provided model override. Set via setModelOverride(). */
@@ -61,9 +51,6 @@ function getModelMap(): Record<AgentId, ModelInfo[]> {
 const PROVIDER_MAP: Record<AgentId, string> = {
   'claude-code': 'anthropic',
   codex: 'openai',
-  gemini: 'google',
-  opencode: 'unknown',
-  aider: 'unknown',
 };
 
 const REASONING_TYPES = new Set(['调试', '重构', '跨仓库']);

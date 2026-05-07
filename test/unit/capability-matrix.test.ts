@@ -42,7 +42,7 @@ describe('rankAgents', () => {
   it('ranks agents for refactoring — claude-code should be first', () => {
     const ranked = rankAgents('重构', '中等');
     expect(ranked[0].agent).toBe('claude-code');
-    expect(ranked.length).toBe(5);
+    expect(ranked.length).toBe(2);
   });
 
   it('ranks agents for testing — codex should be first', () => {

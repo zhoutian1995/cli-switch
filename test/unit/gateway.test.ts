@@ -119,13 +119,6 @@ describe('Gateway', () => {
       expect(result.model).toBeUndefined();
       expect(result.reason).toContain('no model mapping');
     });
-
-    it('returns available=false for gemini (PR1 unsupported)', () => {
-      const result = resolveGateway(config, 'gemini', 'standard');
-      expect(result.available).toBe(false);
-      expect(result.env).toEqual({});
-      expect(result.reason).toContain('not supported');
-    });
   });
 
   describe('getEffectiveModel', () => {

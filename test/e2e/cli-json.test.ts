@@ -75,16 +75,6 @@ describe('CLI JSON golden', () => {
     expect(result.body.error.code).toBe('RESOLVE_CONFLICT');
   });
 
-  it('run --agent gemini --dry-run --json with gateway env shows available:false', () => {
-    const result = runCliJson(
-      ['run', 'hello', '--agent', 'gemini', '--dry-run', '--json'],
-      { SWITCH_API_KEY: 'test-key', SWITCH_MODEL_STANDARD: 'gw-model' },
-    );
-    expect(result.exitCode).toBe(0);
-    expect(result.body.ok).toBe(true);
-    expect(result.body.data.gateway.available).toBe(false);
-  });
-
   it('run --acp --json with gateway env returns GATEWAY_ACP_CONFLICT error', () => {
     const result = runCliJson(
       ['run', 'hello', '--agent', 'claude-code', '--acp', '--json'],
@@ -93,14 +83,5 @@ describe('CLI JSON golden', () => {
     expect(result.exitCode).toBe(2);
     expect(result.body.ok).toBe(false);
     expect(result.body.error.code).toBe('GATEWAY_ACP_CONFLICT');
-  });
-
-  it('run --agent gemini --dry-run --json without gateway shows available:false', () => {
-    const result = runCliJson(
-      ['run', 'hello', '--agent', 'gemini', '--dry-run', '--json'],
-      { SWITCH_API_KEY: '' },  // no gateway
-    );
-    expect(result.exitCode).toBe(0);
-    expect(result.body.data.gateway.available).toBe(false);
   });
 });

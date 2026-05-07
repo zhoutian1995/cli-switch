@@ -6,9 +6,8 @@ export interface FallbackChain {
 }
 
 const DEFAULT_CHAINS: Record<string, FallbackChain> = {
-  'claude-code': { primary: 'claude-code', fallbacks: ['codex', 'gemini'] },
+  'claude-code': { primary: 'claude-code', fallbacks: ['codex'] },
   codex: { primary: 'codex', fallbacks: ['claude-code'] },
-  gemini: { primary: 'gemini', fallbacks: ['claude-code'] },
 };
 
 export function getFallbackChain(agentId: AgentId): FallbackChain {

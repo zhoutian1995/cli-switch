@@ -53,15 +53,10 @@ export const AGENT_ENV_OVERRIDE: Record<string, Record<string, string>> = {
     OPENAI_API_KEY: GATEWAY_ENV_KEYS.apiKey,
     OPENAI_BASE_URL: GATEWAY_ENV_KEYS.baseUrl,
   },
-  // gemini: PR1 不支持，只做 claude-code + codex
-  // gemini: {
-  //   GEMINI_API_KEY: GATEWAY_ENV_KEYS.apiKey,
-  // },
 };
 
 /** Agents that support base URL override via env var. */
 export const AGENT_BASE_URL_OVERRIDE: Record<string, string> = {
   'claude-code': 'ANTHROPIC_BASE_URL',
   codex: 'OPENAI_BASE_URL',
-  // Gemini CLI has no standard BASE_URL env var
 };

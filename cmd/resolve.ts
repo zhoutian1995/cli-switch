@@ -3,7 +3,6 @@ import { Command } from 'commander';
 import {
   claudeCodeAdapter,
   codexAdapter,
-  geminiAdapter,
 } from '../src/adapters/index.js';
 import { createResolverService } from '../src/core/resolver/index.js';
 import { loadBuiltins, loadUserOverrides, mergeRegistry } from '../src/registry/index.js';
@@ -43,7 +42,6 @@ export function createResolveCommand(): Command {
       const adapters = {
         [claudeCodeAdapter.id()]: claudeCodeAdapter,
         [codexAdapter.id()]: codexAdapter,
-        [geminiAdapter.id()]: geminiAdapter,
       };
       const resolver = createResolverService(registry, adapters);
 

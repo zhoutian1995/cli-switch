@@ -49,7 +49,7 @@ export function createRunCommand(): Command {
     .description('Run an AI agent with smart routing')
     .argument('<input>', 'task description')
     .option('--mode <mode>', 'orchestration mode: single|orchestrator|handoff|review')
-    .option('--agent <agent>', 'override agent: claude-code|codex|gemini|opencode|aider')
+    .option('--agent <agent>', 'override agent: claude-code|codex')
     .option('--strategy <name>', 'cost profile: balanced|high_quality|low_cost')
     .option('--execution <mode>', 'execution mode: single|write_review|write_test_fix')
     .option('--tier <tier>', 'model tier: economy|standard|premium')
@@ -323,7 +323,7 @@ export function createRunCommand(): Command {
           // Single-step: existing fast path
           await runSingle(decision.agent, input, { timeoutMs, maxMemoryMb, startTime, options, llm, gitGuard, gatewayEnv: gatewayResult?.available === true ? gatewayResult.env : undefined, effectiveModel: gatewayResult?.available === true ? effectiveModel.model : undefined, capability });
         } else if (mode === 'orchestrator') {
-          const agents = ([decision.agent, 'codex', 'gemini'] as AgentId[]).filter(
+          const agents = ([decision.agent, 'codex'] as AgentId[]).filter(
             (a, i, arr) => arr.indexOf(a) === i,
           );
           const results = await orchestrate(input, agents, { timeoutMs });

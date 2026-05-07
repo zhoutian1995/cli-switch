@@ -83,15 +83,6 @@ export function resolveGateway(
   }
 
   // Also set base URL overrides if agent supports them
-  // PR1 only supports claude-code and codex for gateway
-  if (agentId === 'gemini') {
-    return {
-      available: false,
-      tier: effectiveTier,
-      env: {},
-      reason: `Gateway not supported for '${agentId}' in PR1. Only claude-code and codex are supported.`,
-    };
-  }
   if (agentId === 'claude-code') {
     env['ANTHROPIC_BASE_URL'] = gateway.baseUrl;
   } else if (agentId === 'codex') {

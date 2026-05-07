@@ -4,7 +4,6 @@ import path from 'node:path';
 import {
   claudeCodeAdapter,
   codexAdapter,
-  geminiAdapter,
   type CliAdapter,
   type PlatformService,
 } from '../src/adapters/index.js';
@@ -139,7 +138,6 @@ export function createCommandContext(): CommandContext {
   const adapters = {
     [claudeCodeAdapter.id()]: claudeCodeAdapter,
     [codexAdapter.id()]: codexAdapter,
-    [geminiAdapter.id()]: geminiAdapter,
   } satisfies Record<string, CliAdapter>;
 
   return {

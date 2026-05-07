@@ -24,15 +24,15 @@ describe('ModelSelector', () => {
     expect(sel.model).toContain('haiku');
   });
 
-  it('selects large context model when needed', () => {
-    const sel = selectModel('gemini' as any, {
+  it('selects default model for codex agent', () => {
+    const sel = selectModel('codex' as any, {
       type: 'code-generation',
       complexity: 'medium',
-      needsLongContext: true,
+      needsLongContext: false,
       techStack: [],
-      rawInput: 'analyze large codebase',
+      rawInput: 'write code',
     });
-    expect(sel.model).toContain('pro');
+    expect(sel.model).toBeTruthy();
   });
 
   it('buildModelArgs returns correct CLI args for anthropic', () => {

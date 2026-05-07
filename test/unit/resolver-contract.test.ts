@@ -6,7 +6,6 @@ import { join } from 'node:path';
 import {
   claudeCodeAdapter,
   codexAdapter,
-  geminiAdapter,
 } from '../../src/adapters/index.js';
 import { createResolverService } from '../../src/core/resolver/index.js';
 import { loadBuiltins } from '../../src/registry/index.js';
@@ -15,7 +14,6 @@ const registry = loadBuiltins();
 const adapters = {
   [claudeCodeAdapter.id()]: claudeCodeAdapter,
   [codexAdapter.id()]: codexAdapter,
-  [geminiAdapter.id()]: geminiAdapter,
 };
 
 describe('resolver contract', () => {

@@ -5,7 +5,6 @@ import { Command } from 'commander';
 import {
   claudeCodeAdapter,
   codexAdapter,
-  geminiAdapter,
 } from '../src/adapters/index.js';
 import { createAuthService } from '../src/core/auth/index.js';
 import { createDoctorService } from '../src/core/doctor/index.js';
@@ -32,12 +31,10 @@ function collectEnvironment(toolId?: string): Record<string, string | { present:
 
   if (toolId === 'codex') {
     keys.push('OPENAI_API_KEY');
-  } else if (toolId === 'gemini') {
-    keys.push('GOOGLE_API_KEY');
   } else if (toolId === 'claude-code') {
     keys.push('ANTHROPIC_API_KEY');
   } else if (!toolId) {
-    keys.push('OPENAI_API_KEY', 'GOOGLE_API_KEY', 'ANTHROPIC_API_KEY');
+    keys.push('OPENAI_API_KEY', 'ANTHROPIC_API_KEY');
   }
 
   return Object.fromEntries(
@@ -94,7 +91,6 @@ export function createEnvCommand(): Command {
         const adapters = {
           [claudeCodeAdapter.id()]: claudeCodeAdapter,
           [codexAdapter.id()]: codexAdapter,
-          [geminiAdapter.id()]: geminiAdapter,
         };
         createResolverService(registry, adapters);
         createAuthService(platform);

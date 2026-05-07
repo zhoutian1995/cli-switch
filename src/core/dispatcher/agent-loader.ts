@@ -74,8 +74,6 @@ export class AgentLoader {
         return { program: agent.command, args: [...(model ? ['--model', model] : []), '--print', prompt] };
       case 'codex':
         return { program: agent.command, args: [...(model ? ['-m', model] : []), prompt] };
-      case 'gemini':
-        return { program: agent.command, args: [...(model ? ['-m', model] : []), prompt] };
       default:
         return { program: agent.command, args: [prompt] };
     }
