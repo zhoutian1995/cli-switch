@@ -6,4 +6,5 @@ export * from './diagnostics.js';
 export * from './config.js';
 export * from './agent.js';
 export * from './capability.js';
+export * from './strategy.js';
 export * from './gateway.js';

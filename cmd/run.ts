@@ -7,7 +7,7 @@ import { parseIntent } from '../src/core/intent/index.js';
 import { orchestrate, handoff, review } from '../src/core/orchestrator/index.js';
 import { resolveTier } from '../src/core/router/tier-resolver.js';
 import { loadBuiltins, createRegistryService } from '../src/registry/index.js';
-import { routeWithFallback, rankAgents } from '../src/core/router/index.js';
+import { routeWithFallback, rankAgents, routeByCapability } from '../src/core/router/index.js';
 import { createLLMService } from '../src/core/llm/index.js';
 import { GitGuard } from '../src/core/git/guard.js';
 import { evaluateQuality } from '../src/core/aggregator/quality-checker.js';
@@ -18,8 +18,11 @@ import { ProjectContextBuilder } from '../src/core/context/project-context.js';
 import { selectModel, buildModelArgs } from '../src/core/router/model-selector.js';
 import { ACPBridge } from '../src/core/dispatcher/acp-bridge.js';
 import { StreamWriter } from '../src/core/dispatcher/stream-writer.js';
+import { getStrategy, selectStrategy, isValidStrategy, executeStrategy, createExecutionState, type StepExecutor } from '../src/core/strategy/index.js';
+import type { StrategyName, ExecutionState } from '../src/types/strategy.js';
 import { InteractivePrompt } from '../src/core/ui/prompt.js';
 import type { AgentId, OrchestrationMode, RunResult } from '../src/types/agent.js';
+import type { CapabilityId } from '../src/types/capability.js';
 import { printJson, EXIT_CODES } from './_shared.js';
 import { loadGatewayConfig, resolveGateway, getEffectiveModel } from '../src/core/gateway/index.js';
 import type { Tier } from '../src/types/gateway.js';
@@ -130,20 +133,25 @@ export function createRunCommand(): Command {
         const mode: OrchestrationMode = (options.mode as OrchestrationMode)
           ?? (options.interactive ? await InteractivePrompt.selectMode() : 'single');
 
-        // Guard: --execution / --strategy are planned, reject explicitly
-        const VALID_TIERS = ['economy', 'standard', 'premium'] as const;
-        if (options.execution && options.execution !== 'single') {
-          const msg = `--execution ${options.execution} is not yet implemented. Only 'single' is supported currently.`;
-          if (options.json) {
-            printJson({ ok: false, error: { code: 'INPUT_ERROR', message: msg }, warnings: [], diagnostics: [] });
-          } else {
-            console.error(`Error: ${msg}`);
+        // Strategy resolution: --execution or auto-select from capability
+        const VALID_EXECUTIONS = ['single', 'write_review', 'write_test_fix', 'high_quality'] as const;
+        let strategyName: StrategyName;
+        if (options.execution) {
+          if (!isValidStrategy(options.execution)) {
+            const msg = `--execution must be one of: ${VALID_EXECUTIONS.join(', ')}. Got '${options.execution}'.`;
+            if (options.json) {
+              printJson({ ok: false, error: { code: 'INPUT_ERROR', message: msg }, warnings: [], diagnostics: [] });
+            } else {
+              console.error(`Error: ${msg}`);
+            }
+            process.exit(EXIT_CODES.input);
           }
-          process.exit(EXIT_CODES.input);
+          strategyName = options.execution as StrategyName;
+        } else {
+          strategyName = selectStrategy(capability);
         }
-        if (options.strategy) {
-          console.warn(`Warning: --strategy ${options.strategy} is accepted but not yet wired to execution logic (planned for v0.3).`);
-        }
+        const strategy = getStrategy(strategyName, capability);
+        const VALID_TIERS = ['economy', 'standard', 'premium'] as const;
         if (options.tier && !VALID_TIERS.includes(options.tier as typeof VALID_TIERS[number])) {
           const msg = `--tier must be one of: ${VALID_TIERS.join(', ')}. Got '${options.tier}'.`;
           if (options.json) {
@@ -194,6 +202,11 @@ export function createRunCommand(): Command {
             console.log('── Routing Decision ──────────────────');
             console.log(`  Intent:      ${intent.type} (${intent.complexity})`);
             console.log(`  Capability:  ${capability}`);
+            console.log(`  Strategy:    ${strategy.name} (${strategy.label})`);
+            console.log(`  Steps:       ${strategy.steps.map(s => s.capability).join(' → ')}`);
+            if (strategy.loop) {
+              console.log(`  Loop:        enabled (max ${strategy.maxIterations} iterations)`);
+            }
             console.log(`  Tier:        ${effectiveTier}`);
             console.log(`  Agent:       ${decision.agent}`);
             console.log(`  Reason:      ${decision.reason}`);
@@ -236,6 +249,78 @@ export function createRunCommand(): Command {
         const gitGuard = options.noGit ? undefined : new GitGuard();
 
         if (mode === 'single') {
+          // Strategy-aware execution
+          if (strategy.steps.length > 1 || strategy.loop) {
+            // Multi-step strategy: use strategy engine
+            const resolver = (cap: CapabilityId, stepTierOverride?: Tier) => {
+              if (options.agent) return { agent: options.agent as AgentId, tier: effectiveTier, reason: 'CLI --agent override' };
+              const route = routeByCapability(cap);
+              return {
+                agent: route?.agent ?? decision.agent,
+                tier: stepTierOverride ?? effectiveTier,
+                reason: route?.reason ?? decision.reason,
+              };
+            };
+
+            const stepExec: import('../src/core/strategy/engine.js').StepExecutor = async (cap, agent, tier, prompt, context) => {
+              const stepStart = Date.now();
+              const agentCmd = resolveAgentCommand(agent, context ? `${prompt}\n\n${context}` : prompt, effectiveModel.model);
+              const stepPm = new ProcessManager();
+              const stepWriter = options.stream !== false ? StreamWriter.create() : null;
+              if (stepWriter) stepWriter.startAgent(agent);
+
+              const stepProc = await stepPm.spawnAgent(agent, agentCmd.args, {
+                timeoutMs,
+                maxMemoryMb,
+                command: agentCmd.program,
+                gitGuard,
+                gatewayEnv: gatewayResult?.available === true ? gatewayResult.env : undefined,
+                sandbox: { homeIsolation: Boolean(gatewayResult?.env) },
+                onChunk: stepWriter ? (chunk) => stepWriter!.writeChunk(chunk) : undefined,
+              });
+
+              const ok = stepProc.status === 'completed';
+              const output = stepProc.stdout || stepProc.stderr || '';
+              if (stepWriter) stepWriter.complete(ok);
+
+              return {
+                ok,
+                output,
+                exitCode: stepProc.exitCode ?? (ok ? 0 : 1),
+                durationMs: Date.now() - stepStart,
+                agent,
+              };
+            };
+
+            const strategyResult = await executeStrategy(strategy, input, stepExec, resolver);
+            if (options.json) {
+              printJson({ ok: strategyResult.status === 'success', data: strategyResult, warnings: [], diagnostics: [] });
+            } else {
+              console.log(`── Strategy: ${strategyResult.strategy} ────────────`);
+              console.log(`  Status:      ${strategyResult.status}`);
+              console.log(`  Summary:     ${strategyResult.summary}`);
+              console.log(`  Agent:       ${strategyResult.agent}`);
+              console.log(`  Tier:        ${strategyResult.tier}`);
+              if (strategyResult.iterations) {
+                console.log(`  Iterations:  ${strategyResult.iterations}`);
+              }
+              if (strategyResult.errors && strategyResult.errors.length > 0) {
+                console.log(`  Errors:`);
+                for (const e of strategyResult.errors) {
+                  console.log(`    Step ${e.step} (${e.capability}): ${e.errorType} — ${e.repairAction}`);
+                }
+              }
+              if (strategyResult.decisionTrace.loopIterations?.length) {
+                console.log(`  Loop Trace:`);
+                for (const it of strategyResult.decisionTrace.loopIterations) {
+                  console.log(`    #${it.iteration} ${it.step}: ${it.result}${it.errorType ? ` (${it.errorType})` : ''}`);
+                }
+              }
+            }
+            process.exit(strategyResult.status === 'success' ? EXIT_CODES.success : EXIT_CODES.input);
+          }
+
+          // Single-step: existing fast path
           await runSingle(decision.agent, input, { timeoutMs, maxMemoryMb, startTime, options, llm, gitGuard, gatewayEnv: gatewayResult?.available === true ? gatewayResult.env : undefined, effectiveModel: gatewayResult?.available === true ? effectiveModel.model : undefined, capability });
         } else if (mode === 'orchestrator') {
           const agents = ([decision.agent, 'codex', 'gemini'] as AgentId[]).filter(
