@@ -127,6 +127,7 @@ export class ProcessManager {
         proc = spawn(command, args, {
           cwd: options?.cwd,
           env: sandbox.env,
+          stdio: ['ignore', 'pipe', 'pipe'],  // stdin=ignore prevents agents from waiting for stdin input
           // Resource limits — rssBytes is soft limit on macOS (Node ≥22)
           ...(options?.maxMemoryMb
             ? { resourceLimits: { maxOldGenerationSizeMb: options.maxMemoryMb } }
