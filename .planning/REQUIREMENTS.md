@@ -33,8 +33,8 @@
 
 ### Skill Workflow
 
-- [ ] **SKL-01**: Basic Skill workflow definitions map reusable task templates to capability/strategy execution.
-- [ ] **SKL-02**: `cli-switch skill run <name>` can execute a registered local skill.
+- [x] **SKL-01**: Basic Skill workflow definitions map reusable task templates to capability/strategy execution.
+- [x] **SKL-02**: `cli-switch skill run <name>` can execute a registered local skill.
 
 ## v2 Requirements
 
@@ -71,8 +71,8 @@
 | ISO-01 | Phase 4 | Done |
 | ISO-02 | Phase 4 | Done |
 | ISO-03 | Phase 4 | Done |
-| SKL-01 | Phase 5 | Pending |
-| SKL-02 | Phase 5 | Pending |
+| SKL-01 | Phase 5 | Done |
+| SKL-02 | Phase 5 | Done |
 
 **Coverage:**
 - v1 requirements: 16 total

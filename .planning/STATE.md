@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.3.2
 milestone_name: milestone
-status: executing
-stopped_at: Phase 04 complete
-last_updated: "2026-05-08T12:28:00.000Z"
+status: complete
+stopped_at: null
+last_updated: "2026-05-08T13:00:00.000Z"
 last_activity: 2026-05-08
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 8
-  percent: 92
+  completed_phases: 5
+  total_plans: 10
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-08)
 
 **Core value:** AI agents can call coding capabilities through one stable CLI/JSON interface without hard-coding agent, model, gateway, or execution details.
-**Current focus:** Phase 05 — Skill Workflow Foundation (next)
+**Current focus:** COMPLETE — All 5 phases delivered.
 
 ## Current Position
 
-Phase: 04 (Execution Isolation) — COMPLETE
-Plan: 3 of 3
-Status: Ready to start Phase 05
+Phase: 05 (Skill Workflow Foundation) — COMPLETE
+Plan: 2 of 2
+Status: Milestone complete — all phases delivered
 Last activity: 2026-05-08
 
-Progress: [████████████████████] 92%
+Progress: [████████████████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 8
+- Total plans completed: 10
 - Average duration: n/a
 - Total execution time: 0 hours
 
@@ -48,6 +48,7 @@ Progress: [████████████████████] 92%
 | 2. Configuration Coverage | 3 | 3 | n/a |
 | 3. Output Validation | 2 | 2 | n/a |
 | 4. Execution Isolation | 3 | 3 | n/a |
+| 5. Skill Workflow Foundation | 2 | 2 | n/a |
 
 ## Accumulated Context
 
@@ -67,10 +68,13 @@ Progress: [████████████████████] 92%
 - [Phase 04 Plan 01]: Protected path validation reuses Phase 03's `validateDiffPaths()` for all execution modes when applying changes.
 - [Phase 04 Plan 02]: Temp copy uses rsync with exclude list (.git, node_modules, .cli-switch) when available; falls back to recursive copy.
 - [Phase 04 Plan 03]: Worktree mode errors out for non-git projects rather than attempting a degraded fallback.
+- [Phase 05 Plan 01]: Skill definitions use simple `{input}` template substitution — no complex templating engine for v1.
+- [Phase 05 Plan 01]: Skill resolution follows project-first-then-global pattern, matching config precedence.
+- [Phase 05 Plan 02]: `skill run` accepts all standard execution flags via passthrough to the underlying run command.
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
@@ -88,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-08T12:28:00.000Z
-Stopped at: Phase 04 complete
-Resume file: .planning/phases/05-skill-workflow/05-CONTEXT.md
+Last session: 2026-05-08T13:00:00.000Z
+Stopped at: Milestone complete — all phases delivered
+Resume file: null

@@ -14,7 +14,7 @@ This milestone turns the published v0.3.2 baseline into a tighter v2.0-ready run
 - [x] **Phase 2: Configuration Coverage** - Add global/project/task config layering and config commands.
 - [x] **Phase 3: Output Validation and Repair** - Validate capability outputs and diffs, then add bounded repair.
 - [x] **Phase 4: Execution Isolation** - Add patch-only, temp project copy, and worktree execution modes.
-- [ ] **Phase 5: Skill Workflow Foundation** - Add local reusable skill definitions and `skill run`.
+- [x] **Phase 5: Skill Workflow Foundation** - Add local reusable skill definitions and `skill run`.
 
 ## Phase Details
 
@@ -90,8 +90,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: Define and load local skill workflow schema.
-- [ ] 05-02: Add `skill run` command and tests.
+- [x] 05-01: Define and load local skill workflow schema.
+- [x] 05-02: Add `skill run` command and tests.
 
 ## Progress
 
@@ -104,4 +104,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5.
 | 2. Configuration Coverage | 3/3 | Completed | 2026-05-08 |
 | 3. Output Validation and Repair | 2/2 | Completed | 2026-05-08 |
 | 4. Execution Isolation | 3/3 | Completed | 2026-05-08 |
-| 5. Skill Workflow Foundation | 0/2 | Not started | - |
+| 5. Skill Workflow Foundation | 2/2 | Completed | 2026-05-08 |
