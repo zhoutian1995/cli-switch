@@ -109,6 +109,10 @@ export function createEnvCommand(): Command {
         const paths = platform.resolvePaths();
         const configFile = `${paths.configDir}/config.toml`;
 
+        // YAML config files (Phase 02)
+        const globalYamlConfig = `${paths.configDir}/config.yaml`;
+        const projectYamlConfig = `${process.cwd()}/.cli-switch.yaml`;
+
         const tools = options.tool
           ? [findToolOrThrow(registryService, options.tool)]
           : registryService.listTools();
@@ -124,6 +128,16 @@ export function createEnvCommand(): Command {
               path: configFile,
               exists: existsSync(configFile),
               loaded: false,
+            },
+            {
+              path: globalYamlConfig,
+              exists: existsSync(globalYamlConfig),
+              loaded: existsSync(globalYamlConfig),
+            },
+            {
+              path: projectYamlConfig,
+              exists: existsSync(projectYamlConfig),
+              loaded: existsSync(projectYamlConfig),
             },
           ],
           environment: collectEnvironment(options.tool),

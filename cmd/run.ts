@@ -26,6 +26,8 @@ import type { Diagnostic } from '../src/types/index.js';
 import { printJson, EXIT_CODES, createCommandContext, type CommandContext } from './_shared.js';
 import { loadGatewayConfig, resolveGateway, getEffectiveModel } from '../src/core/gateway/index.js';
 import type { GatewayConfig, Tier } from '../src/types/gateway.js';
+import { loadConfig } from '../src/core/config/index.js';
+import type { CliSwitchConfig, EffectiveConfig } from '../src/types/config.js';
 
 interface RunOptions {
   mode?: string;
@@ -111,9 +113,30 @@ export function createRunCommand(): Command {
         const modelSelection = selectModel(decision.agent, intent);
 
         // Gateway: load config and resolve tier→model (after final agent decision)
-        const gateway = loadGatewayConfig();
-        // TODO: PR4 — wire RoutingConfig from ~/.cli-switch/config.yaml loading
-        const effectiveTier = resolveTier(capability, undefined, options.tier);
+        const configResult = loadConfig(process.cwd());
+        const effectiveConfig: CliSwitchConfig | null = configResult.config?.config ?? null;
+        const configSources: EffectiveConfig['sources'] | null = configResult.config?.sources ?? null;
+
+        const warnings: string[] = [];
+        if (configResult.errors.length > 0) {
+          for (const err of configResult.errors) {
+            warnings.push(`Config: ${err.message}`);
+          }
+        }
+
+        // Build gateway overrides from file config (env still wins via loadGatewayConfig)
+        const gatewayOverrides: Partial<GatewayConfig> | undefined = effectiveConfig?.gateway
+          ? {
+              apiKey: effectiveConfig.gateway.api_key,
+              baseUrl: effectiveConfig.gateway.base_url || undefined,
+              models: effectiveConfig.gateway.models,
+              defaultTier: effectiveConfig.gateway.default_tier,
+              agentKeys: effectiveConfig.gateway.agent_keys as GatewayConfig['agentKeys'],
+            }
+          : undefined;
+
+        const gateway = loadGatewayConfig(gatewayOverrides);
+        const effectiveTier = resolveTier(capability, effectiveConfig?.routing, options.tier);
         const gatewayResult = gateway
           ? resolveGateway(gateway, decision.agent, effectiveTier)
           : null;
@@ -133,7 +156,7 @@ export function createRunCommand(): Command {
         const mode: OrchestrationMode = (options.mode as OrchestrationMode)
           ?? (options.interactive ? await InteractivePrompt.selectMode() : 'single');
 
-        // Strategy resolution: --execution or auto-select from capability
+        // Strategy resolution: --execution > config default > auto-select from capability
         const VALID_EXECUTIONS = ['single', 'write_review', 'write_test_fix', 'high_quality'] as const;
         let strategyName: StrategyName;
         if (options.execution) {
@@ -147,6 +170,8 @@ export function createRunCommand(): Command {
             process.exit(EXIT_CODES.input);
           }
           strategyName = options.execution as StrategyName;
+        } else if (effectiveConfig?.execution?.default_strategy && isValidStrategy(effectiveConfig.execution.default_strategy)) {
+          strategyName = effectiveConfig.execution.default_strategy;
         } else {
           strategyName = selectStrategy(capability);
         }
@@ -161,7 +186,6 @@ export function createRunCommand(): Command {
           }
           process.exit(EXIT_CODES.input);
         }
-        const warnings: string[] = [];
         if (options.strategy) {
           const msg = `--strategy ${options.strategy} is accepted but not yet implemented; use --execution and --tier for active behavior.`;
           warnings.push(msg);
@@ -216,6 +240,10 @@ export function createRunCommand(): Command {
               modelSource: effectiveModel.source,
               baseUrl: gateway?.baseUrl,
             } : { available: false },
+            config: configSources ? {
+              global: { loaded: configSources.global.loaded, path: configSources.global.path },
+              project: { loaded: configSources.project.loaded, path: configSources.project.path },
+            } : undefined,
           };
           if (options.json) {
             printJson({ ok: true, data: output, warnings, diagnostics: [] });
