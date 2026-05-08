@@ -27,9 +27,9 @@
 
 ### Isolation
 
-- [ ] **ISO-01**: Patch-only execution can collect diffs without allowing direct writes to the real project.
-- [ ] **ISO-02**: Temporary project copy execution can run agents away from the real working tree.
-- [ ] **ISO-03**: Worktree execution can create, use, and clean task-specific git worktrees.
+- [x] **ISO-01**: Patch-only execution can collect diffs without allowing direct writes to the real project.
+- [x] **ISO-02**: Temporary project copy execution can run agents away from the real working tree.
+- [x] **ISO-03**: Worktree execution can create, use, and clean task-specific git worktrees.
 
 ### Skill Workflow
 
@@ -68,9 +68,9 @@
 | OUT-01 | Phase 3 | Done |
 | OUT-02 | Phase 3 | Done |
 | OUT-03 | Phase 3 | Done |
-| ISO-01 | Phase 4 | Pending |
-| ISO-02 | Phase 4 | Pending |
-| ISO-03 | Phase 4 | Pending |
+| ISO-01 | Phase 4 | Done |
+| ISO-02 | Phase 4 | Done |
+| ISO-03 | Phase 4 | Done |
 | SKL-01 | Phase 5 | Pending |
 | SKL-02 | Phase 5 | Pending |
 
