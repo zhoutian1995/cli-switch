@@ -132,21 +132,30 @@ function validateProviderContracts(
   const providerName = request.provider ?? finalModel.provider ?? profile.defaultProvider;
   const vendorName = request.vendor ?? finalModel.vendor ?? profile.defaultVendor;
   const transportName = request.transport ?? finalModel.transport ?? profile.defaultTransport;
+  const conflictContext = {
+    tool: request.tool,
+    profile: request.profile,
+    requestedProvider: request.provider,
+    requestedVendor: request.vendor,
+    requestedTransport: request.transport,
+    resolvedProvider: finalModel.provider,
+    resolvedVendor: finalModel.vendor,
+    resolvedTransport: finalModel.transport,
+    model: request.model,
+  };
 
   if (request.provider) {
     const provider = registry.providers[request.provider];
     if (!provider) {
       throw createResolverError('RESOLVE_CONFLICT', `Requested provider is not defined: ${request.provider}`, {
-        tool: request.tool,
-        profile: request.profile,
+        ...conflictContext,
         provider: request.provider,
       });
     }
 
     if (!provider.supportedTools.includes(request.tool)) {
       throw createResolverError('RESOLVE_CONFLICT', `Requested provider does not support tool: ${request.provider}`, {
-        tool: request.tool,
-        profile: request.profile,
+        ...conflictContext,
         provider: request.provider,
         supportedTools: provider.supportedTools,
       });
@@ -154,8 +163,7 @@ function validateProviderContracts(
 
     if (vendorName && provider.vendor !== vendorName) {
       throw createResolverError('RESOLVE_CONFLICT', `Requested vendor conflicts with provider: ${vendorName} vs ${provider.vendor}`, {
-        tool: request.tool,
-        profile: request.profile,
+        ...conflictContext,
         provider: request.provider,
         vendor: vendorName,
         providerVendor: provider.vendor,
@@ -164,8 +172,7 @@ function validateProviderContracts(
 
     if (transportName && !provider.transports.includes(transportName)) {
       throw createResolverError('RESOLVE_CONFLICT', `Requested transport is not supported by provider: ${transportName}`, {
-        tool: request.tool,
-        profile: request.profile,
+        ...conflictContext,
         provider: request.provider,
         transport: transportName,
         supportedTransports: provider.transports,
@@ -175,21 +182,17 @@ function validateProviderContracts(
 
   if (request.vendor && finalModel.vendor && request.vendor !== finalModel.vendor) {
     throw createResolverError('RESOLVE_CONFLICT', `Requested vendor conflicts with resolved model vendor: ${request.vendor} vs ${finalModel.vendor}`, {
-      tool: request.tool,
-      profile: request.profile,
+      ...conflictContext,
       vendor: request.vendor,
       modelVendor: finalModel.vendor,
-      model: request.model,
     });
   }
 
   if (request.transport && finalModel.transport && request.transport !== finalModel.transport) {
     throw createResolverError('RESOLVE_CONFLICT', `Requested transport conflicts with resolved model transport: ${request.transport} vs ${finalModel.transport}`, {
-      tool: request.tool,
-      profile: request.profile,
+      ...conflictContext,
       transport: request.transport,
       modelTransport: finalModel.transport,
-      model: request.model,
     });
   }
 
@@ -197,8 +200,7 @@ function validateProviderContracts(
     const provider = registry.providers[providerName];
     if (provider && finalModel.transport && !provider.transports.includes(finalModel.transport)) {
       throw createResolverError('RESOLVE_CONFLICT', `Resolved model transport is not supported by provider: ${finalModel.transport}`, {
-        tool: request.tool,
-        profile: request.profile,
+        ...conflictContext,
         provider: providerName,
         modelTransport: finalModel.transport,
         supportedTransports: provider.transports,

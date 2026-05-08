@@ -69,9 +69,9 @@
 ## 3. 部分对齐
 
 ### provider / vendor / transport 语义分离
-现状：字段已分离，契约测试已补基础约束。
+现状：字段已分离，resolver 对显式 provider/vendor/transport 冲突执行严格 `RESOLVE_CONFLICT` 校验，并在 diagnostics details 中返回 requested/resolved provider、vendor、transport 以及 provider 支持范围。
 
-不足：resolver 仍存在 fallback 推导路径，缺少更严格的 provider 选择策略与冲突判定。
+不足：该严格校验主要覆盖 `resolve` 路径；`run` 路径仍以 agent/intent/gateway 路由为主，尚未完全复用 resolver runtime preflight。
 
 风险等级：中
 
@@ -97,7 +97,7 @@
 
 | 优先级 | 功能包 | 当前状态 | 说明 |
 |--------|--------|----------|------|
-| P0 | provider/vendor/transport 严格解析 | 部分完成 | `resolve` 已有冲突校验和契约测试，但 provider 选择策略仍需收紧。 |
+| P0 | provider/vendor/transport 严格解析 | resolve 路径完成 | `resolve` 已有严格冲突校验、机器可读 details 和契约测试；run/doctor 集成留给 preflight 收口。 |
 | P0 | 平台与二进制前置检查 | 部分完成 | Resolver 层已有 `PLATFORM_UNSUPPORTED` / `BINARY_NOT_FOUND`，run/doctor 路径仍需统一。 |
 | P0 | 错误码闭环 | 部分完成 | JSON envelope 和 resolver 错误较完整；run/strategy/sandbox/config 错误仍需统一。 |
 | P1 | 执行策略增强 | 部分完成 | `single/write_review/write_test_fix/high_quality` 已有；`--strategy`、`--verify`、`--max-iterations`、`--profile` 未完成。 |
@@ -115,9 +115,12 @@
 - 下一轮建议先收口 P0 三项，再进入 P1 配置与输出校验。
 
 ### provider 解析策略收紧
-建议：
-- 当用户显式指定 `provider/vendor/transport` 时，执行严格兼容性校验
-- 不兼容时直接返回 `RESOLVE_CONFLICT`
+现状：
+- 当用户显式指定 `provider/vendor/transport` 时，resolver 执行严格兼容性校验。
+- 不兼容时返回 `RESOLVE_CONFLICT`，并包含 requested/resolved/provider support details。
+
+剩余建议：
+- 在 run/doctor 的 runtime preflight 中复用 resolver 约束，避免命令路径行为分叉。
 
 优先级：高
 
@@ -156,7 +159,7 @@
 - 核心契约已有自动化护栏
 
 距离严格对齐详细设计，还需要继续补：
-- provider/vendor/transport 严格解析
+- run/doctor 路径的 provider/vendor/transport 与 resolver preflight 对齐
 - 平台与二进制约束前置校验
 - 错误码闭环
 - 用户配置覆盖层

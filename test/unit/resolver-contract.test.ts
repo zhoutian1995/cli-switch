@@ -109,6 +109,15 @@ describe('resolver contract', () => {
     expect(result.runtime?.model.capabilities).toContain('function_calling');
   });
 
+  it('keeps compatible default claude-code resolution working', () => {
+    const resolver = createResolverService(registry, adapters);
+    const result = resolver.resolve({ tool: 'claude-code' });
+
+    expect(result.ok).toBe(true);
+    expect(result.runtime?.provider.name).toBe('anthropic');
+    expect(result.runtime?.model.vendor).toBe('anthropic');
+  });
+
   it('fails when requested provider does not support the tool', () => {
     const resolver = createResolverService(registry, adapters);
     const result = resolver.resolve({
@@ -118,6 +127,25 @@ describe('resolver contract', () => {
 
     expect(result.ok).toBe(false);
     expect(result.diagnostics[0]?.code).toBe('RESOLVE_CONFLICT');
+    expect(result.diagnostics[0]?.details).toMatchObject({
+      requestedProvider: 'google',
+      provider: 'google',
+    });
+  });
+
+  it('fails with supportedTools details when provider exists but does not support the tool', () => {
+    const resolver = createResolverService(registry, adapters);
+    const result = resolver.resolve({
+      tool: 'claude-code',
+      provider: 'openai',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]?.code).toBe('RESOLVE_CONFLICT');
+    expect(result.diagnostics[0]?.details).toMatchObject({
+      requestedProvider: 'openai',
+      supportedTools: ['codex'],
+    });
   });
 
   it('fails when requested vendor conflicts with resolved model vendor', () => {
@@ -130,17 +158,45 @@ describe('resolver contract', () => {
 
     expect(result.ok).toBe(false);
     expect(result.diagnostics[0]?.code).toBe('RESOLVE_CONFLICT');
+    expect(result.diagnostics[0]?.details).toMatchObject({
+      requestedVendor: 'openai',
+      resolvedVendor: 'anthropic',
+      modelVendor: 'anthropic',
+    });
   });
 
   it('fails when requested transport conflicts with provider transports', () => {
     const resolver = createResolverService(registry, adapters);
     const result = resolver.resolve({
       tool: 'claude-code',
+      model: 'glm-5',
       provider: 'zhipu',
       transport: 'native',
     });
 
     expect(result.ok).toBe(false);
     expect(result.diagnostics[0]?.code).toBe('RESOLVE_CONFLICT');
+    expect(result.diagnostics[0]?.details).toMatchObject({
+      requestedProvider: 'zhipu',
+      requestedTransport: 'native',
+      supportedTransports: ['api'],
+    });
+  });
+
+  it('fails when requested provider conflicts with resolved model vendor', () => {
+    const resolver = createResolverService(registry, adapters);
+    const result = resolver.resolve({
+      tool: 'claude-code',
+      model: 'sonnet',
+      provider: 'zhipu',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics[0]?.code).toBe('RESOLVE_CONFLICT');
+    expect(result.diagnostics[0]?.details).toMatchObject({
+      requestedProvider: 'zhipu',
+      resolvedVendor: 'anthropic',
+      providerVendor: 'zhipu',
+    });
   });
 });

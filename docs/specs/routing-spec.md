@@ -8,11 +8,11 @@
 >
 > **关系**：本 spec 是 PRD 路由相关章节的结构化提取和细化，为路由引擎和策略引擎的设计提供精确规则定义。
 >
-> **状态说明**：本文档包含当前 v0.3.0 路由实现和 PRD v2.0 目标路由。当前代码以 intent type + agent ranking + registry model resolution 为主；tier/gateway/capability routing 是 v2.0 目标。
+> **状态说明**：本文档包含当前 v0.3.2 路由实现和 PRD v2.0 目标路由。当前代码以 intent type + agent ranking + registry model resolution 为主；tier/gateway/capability routing 已有基础实现，Custom 配置层仍是 v2.0 目标。
 
 ---
 
-## 0. 当前实现基线（v0.3.0）
+## 0. 当前实现基线（v0.3.2）
 
 当前 `run` 路由链路：
 
@@ -46,6 +46,13 @@ ProcessManager / ACPBridge
 当前模型解析分两条路径：
 - `run` 路径使用 `src/core/router/model-selector.ts` 的 agent/intent 模型选择。
 - `resolve` 路径使用 Registry / Resolver，根据 tool/profile/model/provider/vendor/transport 生成 `RuntimeSpec`。
+
+当前 `resolve` 的 provider/vendor/transport 合约：
+- 显式请求未定义 provider → `RESOLVE_CONFLICT`
+- 显式 provider 不支持 tool → `RESOLVE_CONFLICT`
+- 显式 vendor 与 provider 或 resolved model vendor 冲突 → `RESOLVE_CONFLICT`
+- 显式 transport 与 provider transports 或 resolved model transport 冲突 → `RESOLVE_CONFLICT`
+- diagnostics details 包含 requested/resolved provider/vendor/transport 和 provider 支持范围，供上层 Agent 解释失败原因。
 
 当前 Registry 支持的内置 tools：
 
