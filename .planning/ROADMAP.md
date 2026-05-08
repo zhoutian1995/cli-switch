@@ -46,7 +46,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Add config schema, loader, and precedence rules.
+- [x] 02-01: Add config schema, loader, and precedence rules.
 - [ ] 02-02: Wire config into gateway/routing/tier/strategy resolution.
 - [ ] 02-03: Add `config` command group and tests.
 
@@ -101,7 +101,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Runtime Contract Closure | 3/3 | Completed | 2026-05-08 |
-| 2. Configuration Coverage | 0/3 | Ready | - |
+| 2. Configuration Coverage | 1/3 | In Progress | - |
 | 3. Output Validation and Repair | 0/2 | Not started | - |
 | 4. Execution Isolation | 0/3 | Not started | - |
 | 5. Skill Workflow Foundation | 0/2 | Not started | - |
