@@ -54,7 +54,7 @@ function writeYamlConfig(filePath: string, data: Record<string, unknown>): void 
   writeFileSync(filePath, yaml.dump(data, { lineWidth: 120, noRefs: true }), 'utf-8');
 }
 
-const VALID_TOP_LEVEL_KEYS = ['gateway', 'routing', 'execution', 'loop', 'output'];
+const VALID_TOP_LEVEL_KEYS = ['gateway', 'routing', 'execution', 'loop', 'output', 'skills'];
 
 function setNestedValue(obj: Record<string, unknown>, keyPath: string, value: unknown): void {
   const parts = keyPath.split('.');
@@ -129,6 +129,7 @@ function renderConfigText(config: CliSwitchConfig | null, sources: { global: { p
     { key: 'execution' as const, label: 'Execution' },
     { key: 'loop' as const, label: 'Loop' },
     { key: 'output' as const, label: 'Output' },
+    { key: 'skills' as const, label: 'Skills' },
   ];
 
   for (const section of sections) {

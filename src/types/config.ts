@@ -51,6 +51,13 @@ export const outputSectionSchema = z.object({
   quiet: z.boolean().optional(),
 });
 
+/** Skills section — skill execution defaults. */
+export const skillsSectionSchema = z.object({
+  default_strategy: z.enum(['single', 'write_review', 'write_test_fix', 'high_quality']).optional(),
+  default_tier: z.enum(['economy', 'standard', 'premium']).optional(),
+  prompt_suffix: z.string().optional(),
+});
+
 // ─── Root Config Schema ────────────────────────────────────
 
 /**
@@ -63,6 +70,7 @@ export const configSchema = z.object({
   execution: executionSectionSchema.optional(),
   loop: loopSectionSchema.optional(),
   output: outputSectionSchema.optional(),
+  skills: skillsSectionSchema.optional(),
 }).strict();
 
 // ─── TypeScript Interfaces ─────────────────────────────────
@@ -99,6 +107,13 @@ export interface OutputSection {
   quiet?: boolean;
 }
 
+/** Skills config section. */
+export interface SkillsSection {
+  default_strategy?: StrategyName;
+  default_tier?: Tier;
+  prompt_suffix?: string;
+}
+
 /** Root config file shape (all sections optional). */
 export interface CliSwitchConfig {
   gateway?: GatewaySection;
@@ -106,6 +121,7 @@ export interface CliSwitchConfig {
   execution?: ExecutionSection;
   loop?: LoopSection;
   output?: OutputSection;
+  skills?: SkillsSection;
 }
 
 /** Config source metadata. */
