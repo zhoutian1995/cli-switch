@@ -109,7 +109,7 @@ PR1（Gateway 注入层）**只支持两个 Agent 的 Gateway 路由**：
 |-------|-------------|----------|-----------|
 | claude-code | ✅ | ANTHROPIC_API_KEY → gateway key, ANTHROPIC_BASE_URL → gateway url | `--model <gateway-model>` |
 | codex | ✅ | OPENAI_API_KEY → gateway key, OPENAI_BASE_URL → gateway url | `-m <gateway-model>` |
-| gemini | ❌ PR1 不做 | 不覆盖 | 不传 model |
+| gemini | ❌ 不支持 | 不覆盖 | 不传 model |
 
 Gemini / OpenCode / Aider 的 Gateway 支持留给后续版本（v0.2+）。
 
@@ -322,7 +322,7 @@ cli-switch benchmark     # 跨 Agent 性能基准
 cli-switch run <任务描述> [选项]
 
 --mode <mode>        当前编排模式: single | orchestrator | handoff | review
---agent <agent>      指定 Agent: claude-code | codex | gemini | opencode | aider
+--agent <agent>      指定 Agent: claude-code | codex
 --json               JSON 输出
 --dry-run            只看路由决策
 --timeout <秒>       Agent 超时时间
@@ -335,7 +335,7 @@ cli-switch run <任务描述> [选项]
 --acp                使用 JSON-RPC over stdio 的 ACPBridge
 ```
 
-当前命令面没有 `config show/set/reset`，也没有 `run --profile` / `run --execution` / `run --verify` / `run --max-iterations` / `run --cwd`。
+当前命令面没有 `config show/set/reset`，也没有 `run --profile` / `run --verify` / `run --max-iterations` / `run --cwd`。
 
 ### v2.0 目标命令面
 

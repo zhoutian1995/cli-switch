@@ -25,7 +25,7 @@ import type { AgentId, OrchestrationMode, RunResult } from '../src/types/agent.j
 import type { CapabilityId } from '../src/types/capability.js';
 import { printJson, EXIT_CODES } from './_shared.js';
 import { loadGatewayConfig, resolveGateway, getEffectiveModel } from '../src/core/gateway/index.js';
-import type { Tier } from '../src/types/gateway.js';
+import type { GatewayConfig, Tier } from '../src/types/gateway.js';
 
 interface RunOptions {
   mode?: string;
@@ -50,7 +50,7 @@ export function createRunCommand(): Command {
     .argument('<input>', 'task description')
     .option('--mode <mode>', 'orchestration mode: single|orchestrator|handoff|review')
     .option('--agent <agent>', 'override agent: claude-code|codex')
-    .option('--strategy <name>', 'cost profile: balanced|high_quality|low_cost')
+    .option('--strategy <name>', 'cost profile: balanced|high_quality|low_cost (TODO: not yet implemented)')
     .option('--execution <mode>', 'execution mode: single|write_review|write_test_fix')
     .option('--tier <tier>', 'model tier: economy|standard|premium')
     .option('--json', 'output JSON')
@@ -188,6 +188,19 @@ export function createRunCommand(): Command {
             decision,
             mode,
             ranked,
+            strategy: {
+              name: strategy.name,
+              label: strategy.label,
+              description: strategy.description,
+              steps: strategy.steps.map(s => ({
+                step: s.step,
+                capability: s.capability,
+                onFail: s.onFail,
+                tierOverride: s.tierOverride,
+              })),
+              loop: strategy.loop,
+              maxIterations: strategy.maxIterations,
+            },
             gateway: gatewayResult?.available === true ? {
               available: true,
               tier: effectiveModel.tier,
@@ -267,7 +280,22 @@ export function createRunCommand(): Command {
 
             const stepExec: import('../src/core/strategy/engine.js').StepExecutor = async (cap, agent, tier, prompt, context) => {
               const stepStart = Date.now();
-              const agentCmd = resolveAgentCommand(agent, context ? `${prompt}\n\n${context}` : prompt, effectiveModel.model);
+
+              // H2: per-step gateway resolution — re-resolve for this step's agent + tier
+              let stepGatewayEnv: Record<string, string> | undefined;
+              let stepModel: string | undefined = effectiveModel.model;
+              if (gateway) {
+                const stepGw = resolveGateway(gateway, agent, tier);
+                if (stepGw.available) {
+                  stepGatewayEnv = stepGw.env;
+                  stepModel = stepGw.model ?? stepModel;
+                }
+              }
+
+              // H1: per-capability prompt construction
+              const stepPrompt = buildCapabilityPrompt(cap, prompt, context);
+
+              const agentCmd = resolveAgentCommand(agent, stepPrompt, stepModel);
               const stepPm = new ProcessManager();
               const stepWriter = options.stream !== false ? StreamWriter.create() : null;
               if (stepWriter) stepWriter.startAgent(agent);
@@ -277,8 +305,8 @@ export function createRunCommand(): Command {
                 maxMemoryMb,
                 command: agentCmd.program,
                 gitGuard,
-                gatewayEnv: gatewayResult?.available === true ? gatewayResult.env : undefined,
-                sandbox: { homeIsolation: Boolean(gatewayResult?.env) },
+                gatewayEnv: stepGatewayEnv,
+                sandbox: { homeIsolation: Boolean(stepGatewayEnv) },
                 onChunk: stepWriter ? (chunk) => stepWriter!.writeChunk(chunk) : undefined,
               });
 
@@ -324,7 +352,7 @@ export function createRunCommand(): Command {
           }
 
           // Single-step: existing fast path
-          await runSingle(decision.agent, input, { timeoutMs, maxMemoryMb, startTime, options, llm, gitGuard, gatewayEnv: gatewayResult?.available === true ? gatewayResult.env : undefined, effectiveModel: gatewayResult?.available === true ? effectiveModel.model : undefined, capability });
+          await runSingle(decision.agent, input, { timeoutMs, maxMemoryMb, startTime, options, llm, gitGuard, gatewayEnv: gatewayResult?.available === true ? gatewayResult.env : undefined, effectiveModel: gatewayResult?.available === true ? effectiveModel.model : undefined, capability, gateway, effectiveTier });
         } else if (mode === 'orchestrator') {
           const agents = ([decision.agent, 'codex'] as AgentId[]).filter(
             (a, i, arr) => arr.indexOf(a) === i,
@@ -390,10 +418,37 @@ export function createRunCommand(): Command {
     });
 }
 
+/**
+ * Build a capability-specific prompt for strategy step execution.
+ *
+ * Each capability gets a different system prefix so the agent knows
+ * what role it's playing in the current step.
+ */
+function buildCapabilityPrompt(
+  cap: CapabilityId,
+  originalPrompt: string,
+  context: string,
+): string {
+  const CAPABILITY_PREFIXES: Record<CapabilityId, string> = {
+    write_code: '[Step: write_code] You are writing code. Implement the following task. Output only the code changes needed.\n',
+    review_code: '[Step: review_code] You are reviewing code. Analyze the changes for correctness, style, and potential issues. Provide a structured review.\n',
+    refactor: '[Step: refactor] You are refactoring code. Improve structure without changing behavior. Preserve existing tests.\n',
+    fix_error: '[Step: fix_error] You are fixing errors. Analyze the error output below and fix the issues. Do NOT rewrite unrelated code.\n',
+    analyze: '[Step: analyze] You are analyzing code. Read the codebase and provide insights. Do NOT modify any files.\n',
+    write_tests: '[Step: write_tests] You are writing tests. Create comprehensive test cases for the code. Use the project\'s existing test framework.\n',
+    run_tests: '[Step: run_tests] Run the existing test suite and report results. If tests fail, output the failure details so the next step can fix them.\n',
+    explain: '[Step: explain] Explain the code or concept clearly. Be concise and accurate.\n',
+  };
+
+  const prefix = CAPABILITY_PREFIXES[cap] ?? '';
+  const ctx = context ? `\n\nPrevious step context:\n${context}` : '';
+  return `${prefix}${originalPrompt}${ctx}`;
+}
+
 async function runSingle(
   agentId: AgentId,
   input: string,
-  ctx: { timeoutMs: number; maxMemoryMb: number; startTime: number; options: RunOptions; llm?: InstanceType<typeof import('../src/core/llm/service.js').LLMService> | null; gitGuard?: GitGuard; gatewayEnv?: Record<string, string>; effectiveModel?: string; capability?: import('../src/types/capability.js').CapabilityId },
+  ctx: { timeoutMs: number; maxMemoryMb: number; startTime: number; options: RunOptions; llm?: InstanceType<typeof import('../src/core/llm/service.js').LLMService> | null; gitGuard?: GitGuard; gatewayEnv?: Record<string, string>; effectiveModel?: string; capability?: import('../src/types/capability.js').CapabilityId; gateway?: GatewayConfig | null; effectiveTier?: Tier },
 ): Promise<void> {
   const { program, args } = resolveAgentCommand(agentId, input, ctx.effectiveModel);
   const pm = new ProcessManager();
@@ -456,13 +511,25 @@ async function runSingle(
     while (!result.ok && attempts < 2) {
       const fb = suggestFallback(currentAgent, result.output);
       if (!fb) break;
-      const fbCmd = resolveAgentCommand(fb, input, ctx.effectiveModel);
+
+      // H2: re-resolve gateway for fallback agent
+      let fbGatewayEnv: Record<string, string> | undefined;
+      let fbModel: string | undefined = ctx.effectiveModel;
+      if (ctx.gateway) {
+        const fbGw = resolveGateway(ctx.gateway, fb, ctx.effectiveTier);
+        if (fbGw.available) {
+          fbGatewayEnv = fbGw.env;
+          fbModel = fbGw.model ?? fbModel;
+        }
+      }
+
+      const fbCmd = resolveAgentCommand(fb, input, fbModel);
       const fbProc = await pm.spawnAgent(fb, fbCmd.args, {
         timeoutMs: ctx.timeoutMs,
         maxMemoryMb: ctx.maxMemoryMb,
         command: fbCmd.program,
-        gatewayEnv: ctx.gatewayEnv,
-        sandbox: { homeIsolation: Boolean(ctx.gatewayEnv) },
+        gatewayEnv: fbGatewayEnv,
+        sandbox: { homeIsolation: Boolean(fbGatewayEnv) },
       });
       result = { ...buildResult(fbProc, ctx.startTime), capability: ctx.capability, fallback: true };
       currentAgent = fb;

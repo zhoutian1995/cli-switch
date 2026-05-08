@@ -7,7 +7,7 @@ AI Agent 编排 CLI — 智能路由、多 Agent 调度、结构化输出。
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6+-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![Tests](https://img.shields.io/badge/tests-308%20passed-green.svg)](https://github.com/zhoutian1995/cli-switch)
+[![Tests](https://img.shields.io/badge/tests-315%20passed-green.svg)](https://github.com/zhoutian1995/cli-switch)
 
 ## 安装
 
@@ -158,7 +158,7 @@ test/             测试（单元、契约、E2E、压力）
 ```bash
 npm run build          # 构建
 npm run dev            # watch 模式
-npm test               # 全部测试（308 个）
+npm test               # 全部测试（315 个）
 npm run smoke          # 安装后验证测试（9 个）
 npm run lint           # 类型检查
 ```
