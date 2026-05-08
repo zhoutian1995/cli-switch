@@ -4,13 +4,18 @@ All notable changes to cli-switch will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-05-08
+
 ### Added
 - Gateway env aliases for self-hosted relays and OpenRouter: `SWITCH_RELAY_API_KEY`, `SWITCH_RELAY_BASE_URL`, `OPENROUTER_API_KEY`, and `OPENROUTER_BASE_URL`.
 - `cli-switch env` now reports gateway and relay environment variables with masked values.
+- Formal multilingual README covering English, Chinese, Japanese, and Korean.
+- GitHub release positioning, use cases, fit guidance, and onboarding curve.
 
 ### Changed
 - Strategy and fallback execution now resolve model and gateway env per target agent/tier instead of reusing the initial agent runtime.
 - `--strategy` now emits an explicit warning because cost profiles are accepted but not yet implemented.
+- README now documents current v0.3.x capabilities and roadmap boundaries more precisely.
 
 ## [0.3.0] - 2025-05-06
 
