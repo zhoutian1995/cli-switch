@@ -25,6 +25,8 @@ import type {
 } from '../../types/strategy.js';
 import type { Tier } from '../../types/gateway.js';
 import { classifyError, createErrorRecord } from './error-classifier.js';
+import { validateOutput } from '../validation/validator.js';
+import { repairOutput, resetRepairCounter } from '../validation/repair.js';
 
 // ─── Route Resolver Interface ────────────────────────────────
 
@@ -100,12 +102,16 @@ export async function executeStrategy(
   const execState = state ?? createExecutionState(strategy);
   const startTime = Date.now();
   const loopIterations: LoopIteration[] = [];
+  const validatedOutputs: Record<string, unknown> = {};
 
   let finalAgent: AgentId = 'claude-code';
   let finalTier: Tier = strategy.defaultTier;
   let finalReason = '';
 
-  // For single strategy, just execute step 1
+  // Reset repair counter at start of strategy execution
+  resetRepairCounter();
+
+  // For single strategy, just execute step 1 (no validation hook)
   if (!strategy.loop && strategy.steps.length === 1) {
     const step = strategy.steps[0];
     const route = resolver(step.capability, step.tierOverride);
@@ -158,6 +164,7 @@ export async function executeStrategy(
         buildTrace(strategy, loopIterations, finalAgent, finalTier),
         execState.errors,
         iteration,
+        validatedOutputs,
       );
     }
 
@@ -180,14 +187,39 @@ export async function executeStrategy(
     finalTier = tier;
     finalReason = route.reason;
 
-    execState.history.push({
+    // ── Post-step validation (multi-step only) ──
+    let validatedOutput: unknown;
+    const validationResult = validateOutput(step.capability, result.output);
+
+    if (validationResult.valid) {
+      validatedOutput = validationResult.data;
+    } else {
+      // Attempt repair
+      const repairResult = repairOutput(step.capability, result.output);
+      if (repairResult.success) {
+        const revalidation = validateOutput(step.capability, repairResult.output);
+        if (revalidation.valid) {
+          validatedOutput = revalidation.data;
+        }
+      }
+      // If repair also failed, validatedOutput stays undefined — don't abort
+    }
+
+    const stepHistory: StepHistory = {
       step: step.step,
       capability: step.capability,
       status: result.ok ? 'success' : 'failed',
       agent: result.agent,
       output: result.output,
       durationMs: result.durationMs,
-    });
+    };
+
+    if (validatedOutput !== undefined) {
+      stepHistory.validatedOutput = validatedOutput as StepHistory['validatedOutput'];
+      validatedOutputs[`step-${step.step}`] = validatedOutput;
+    }
+
+    execState.history.push(stepHistory);
     execState.totalDurationMs += result.durationMs;
 
     if (result.ok) {
@@ -234,6 +266,7 @@ export async function executeStrategy(
             buildTrace(strategy, loopIterations, finalAgent, finalTier),
             execState.errors,
             iteration,
+            validatedOutputs,
           );
 
         case 'loop':
@@ -258,6 +291,7 @@ export async function executeStrategy(
             buildTrace(strategy, loopIterations, finalAgent, finalTier),
             execState.errors,
             iteration,
+            validatedOutputs,
           );
 
         case 'retry':
@@ -276,6 +310,7 @@ export async function executeStrategy(
             buildTrace(strategy, loopIterations, finalAgent, finalTier),
             execState.errors,
             iteration,
+            validatedOutputs,
           );
       }
     }
@@ -292,6 +327,7 @@ export async function executeStrategy(
     buildTrace(strategy, loopIterations, finalAgent, finalTier),
     undefined,
     iteration,
+    validatedOutputs,
   );
 }
 
@@ -328,6 +364,7 @@ function buildResult(
   decisionTrace: DecisionTrace,
   errors?: ErrorRecord[],
   iterations?: number,
+  validatedOutputs?: Record<string, unknown>,
 ): StrategyResult {
   return {
     status,
@@ -339,5 +376,6 @@ function buildResult(
     decisionTrace,
     ...(errors && errors.length > 0 ? { errors } : {}),
     ...(iterations && iterations > 1 ? { iterations } : {}),
+    ...(validatedOutputs && Object.keys(validatedOutputs).length > 0 ? { validatedOutputs } : {}),
   };
 }

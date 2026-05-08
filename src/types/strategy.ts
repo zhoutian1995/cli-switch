@@ -137,4 +137,6 @@ export interface StrategyResult {
   iterations?: number;
   durationMs: number;
   decisionTrace: DecisionTrace;
+  /** Validated outputs from each step (multi-step strategies only) */
+  validatedOutputs?: Record<string, unknown>;
 }
