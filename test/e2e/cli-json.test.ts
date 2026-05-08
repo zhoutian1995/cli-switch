@@ -128,6 +128,19 @@ describe('CLI JSON golden', () => {
     expect(result.body.error.code).toBe('GATEWAY_ACP_CONFLICT');
   });
 
+  it('run invalid execution --json returns INPUT_ERROR', () => {
+    const result = runCliJson(
+      ['run', 'hello', '--execution', 'not-a-strategy', '--json', '--dry-run'],
+      { OPENROUTER_API_KEY: '', SWITCH_API_KEY: '' },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(result.body.ok).toBe(false);
+    expect(result.body.error.code).toBe('INPUT_ERROR');
+    expect(Array.isArray(result.body.warnings)).toBe(true);
+    expect(Array.isArray(result.body.diagnostics)).toBe(true);
+  });
+
   it('doctor --json reports BINARY_NOT_FOUND from runtime preflight', () => {
     const currentPlatform = process.platform === 'darwin' ? 'darwin' : 'linux';
     const result = runCliJson(

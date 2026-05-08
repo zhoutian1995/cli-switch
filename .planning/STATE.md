@@ -4,14 +4,14 @@ milestone: v0.3.2
 milestone_name: milestone
 status: executing
 stopped_at: GSD next milestone initialized; Phase 1 ready to plan
-last_updated: "2026-05-08T08:54:13Z"
-last_activity: 2026-05-08 -- Phase 01 Plan 02 runtime preflight closure completed
+last_updated: "2026-05-08T08:57:03Z"
+last_activity: 2026-05-08 -- Phase 01 Plan 03 runtime error-code closure completed
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-08)
 
 **Core value:** AI agents can call coding capabilities through one stable CLI/JSON interface without hard-coding agent, model, gateway, or execution details.
-**Current focus:** Phase 01 — Runtime Contract Closure
+**Current focus:** Phase 02 — Configuration Coverage
 
 ## Current Position
 
-Phase: 01 (Runtime Contract Closure) — EXECUTING
-Plan: 2 of 3
-Status: Executing Phase 01
-Last activity: 2026-05-08 -- Phase 01 Plan 02 runtime preflight closure completed
+Phase: 01 (Runtime Contract Closure) — COMPLETED
+Plan: 3 of 3
+Status: Phase 01 complete; ready for Phase 02 planning/execution
+Last activity: 2026-05-08 -- Phase 01 Plan 03 runtime error-code closure completed
 
-Progress: [███████░░░] 67%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 2
+- Total plans completed: 3
 - Average duration: n/a
 - Total execution time: 0 hours
 
@@ -55,6 +55,7 @@ Progress: [███████░░░] 67%
 - [Next milestone]: Close runtime contract reliability before config, output repair, and sandbox expansion.
 - [Phase 01 Plan 01]: Provider/vendor/transport conflicts now include structured resolver diagnostics.
 - [Phase 01 Plan 02]: Runtime platform and required-binary checks are resolver-owned and surfaced before known agent spawns.
+- [Phase 01 Plan 03]: Public runtime JSON error-code inventory is documented and covered by representative golden tests.
 
 ### Pending Todos
 

@@ -10,7 +10,7 @@ This milestone turns the published v0.3.2 baseline into a tighter v2.0-ready run
 - Integer phases are planned milestone work.
 - Decimal phases are urgent insertions.
 
-- [ ] **Phase 1: Runtime Contract Closure** - Finish provider/vendor/transport strictness, preflight checks, and error-code closure.
+- [x] **Phase 1: Runtime Contract Closure** - Finish provider/vendor/transport strictness, preflight checks, and error-code closure.
 - [ ] **Phase 2: Configuration Coverage** - Add global/project/task config layering and config commands.
 - [ ] **Phase 3: Output Validation and Repair** - Validate capability outputs and diffs, then add bounded repair.
 - [ ] **Phase 4: Execution Isolation** - Add patch-only, temp project copy, and worktree execution modes.
@@ -30,9 +30,9 @@ This milestone turns the published v0.3.2 baseline into a tighter v2.0-ready run
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Audit and tighten provider/vendor/transport resolver contracts.
-- [ ] 01-02: Unify platform and binary preflight across resolve/doctor/run.
-- [ ] 01-03: Document and test runtime error-code closure.
+- [x] 01-01: Audit and tighten provider/vendor/transport resolver contracts.
+- [x] 01-02: Unify platform and binary preflight across resolve/doctor/run.
+- [x] 01-03: Document and test runtime error-code closure.
 
 ### Phase 2: Configuration Coverage
 **Goal**: Implement global, project, and task-level config overrides for gateway, routing, tier, and strategy defaults.
@@ -100,7 +100,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Runtime Contract Closure | 0/3 | Not started | - |
+| 1. Runtime Contract Closure | 3/3 | Completed | 2026-05-08 |
 | 2. Configuration Coverage | 0/3 | Not started | - |
 | 3. Output Validation and Repair | 0/2 | Not started | - |
 | 4. Execution Isolation | 0/3 | Not started | - |

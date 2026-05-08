@@ -8,11 +8,11 @@
 >
 > **关系**：本 spec 是 PRD 运行时相关章节的结构化提取和细化，为架构设计和编码提供精确的数据结构定义。
 >
-> **状态说明**：Capability 输出 schema、execution_state、diff 校验和 auto-repair 是 PRD v2.0 目标运行时。当前 v0.3.0 代码已经实现 CLI JSON Envelope、Resolver `RuntimeSpec`、`RunResult` 和基础错误 envelope，但尚未实现 Capability 级输出校验与 Loop 状态机。
+> **状态说明**：Capability 输出 schema、execution_state、diff 校验和 auto-repair 是 PRD v2.0 目标运行时。当前 v0.3.2 代码已经实现 CLI JSON Envelope、Resolver `RuntimeSpec`、`RunResult`、resolver/provider 严格冲突校验、运行前平台/二进制 preflight 和基础错误 envelope，但尚未实现 Capability 级输出校验与完整自动修复状态机。
 
 ---
 
-## 0. 当前运行时基线（v0.3.0）
+## 0. 当前运行时基线（v0.3.2）
 
 ### 0.1 CLI JSON Envelope
 
@@ -406,7 +406,29 @@ retry(same agent) → upgrade_tier → switch_agent → abort
 | **switch_agent** | 切换到另一 Agent 重试 | upgrade_tier 后仍失败 |
 | **abort** | 终止执行，返回错误详情 | 所有手段耗尽（达到 max_repair_attempts / max_iterations） |
 
-### 2.3 错误码列表
+### 2.3 当前公开错误码清单（v0.3.2）
+
+当前公开 JSON 失败统一使用 `schema_version: "v1alpha1"`，并通过 `error.code` 暴露机器可读错误码。`warnings` 与 `diagnostics` 始终为数组。
+
+| 错误码 | 状态 | 主要来源 | Exit Code | 说明 |
+|--------|------|----------|-----------|------|
+| `INPUT_ERROR` | 已实现 | commander root handler、`run --execution`、`run --tier` | 2 | CLI 参数缺失、非法 execution/tier 等输入错误。 |
+| `TOOL_NOT_FOUND` | 已实现 | resolver normalizer | 4 | `resolve` / resolver runtime 中请求的 tool 不存在。 |
+| `TOOL_NOT_SUPPORTED` | 已实现 | command shared helpers | 3 | `doctor` / command path 请求了 registry 不支持的 tool。 |
+| `PROFILE_NOT_FOUND` | 已实现 | resolver profile selector、command shared helpers | 3 或 4 | 请求的 profile 不存在；resolver 路径为 resolve error，doctor 等命令路径为 environment error。 |
+| `MODEL_NOT_FOUND` | 已实现 | resolver model resolver | 4 | 请求模型不存在，或 profile 没有 default model。 |
+| `ADAPTER_NOT_FOUND` | 已实现 | resolver service | 4 | registry 中的 tool 指向不存在的 adapter。 |
+| `RESOLVE_CONFLICT` | 已实现 | resolver contract validation | 4 | capability、provider、vendor、transport 等显式约束冲突。 |
+| `PLATFORM_UNSUPPORTED` | 已实现 | resolver runtime preflight | 3 或 4 | tool/profile 不支持当前平台；`run` 会在 spawn 前返回 environment error。 |
+| `BINARY_NOT_FOUND` | 已实现 | resolver runtime preflight | 3 或 4 | profile 要求本地 CLI binary，但 PATH 中找不到。 |
+| `GATEWAY_ACP_CONFLICT` | 已实现 | `run` gateway/acp guard | 2 | gateway env injection 与 `--acp` 当前互斥。 |
+| `RUN_FAILED` | 部分实现 | `run` catch-all | 2 | 执行阶段未归类异常；仍需进一步细分为 spawn、timeout、agent exit 等稳定码。 |
+| `RESOLVE_FAILED` | 部分实现 | resolver diagnostic fallback、run preflight fallback | 4 | resolver 未提供更具体 diagnostic 时使用的兜底码。 |
+| `UNKNOWN_ERROR` | 已实现 | shared JSON envelope fallback | 3 或命令指定 | command catch 未携带 code 时的兜底 envelope code。 |
+
+Auth/doctor diagnostics 也会在 `diagnostics[]` 中出现，例如 `AUTH_READY`、`AUTH_MISSING`、`DOCTOR_RUNTIME_PREFLIGHT_OK`、`DOCTOR_AUTH_*`、`DOCTOR_MODEL_*`。这些是诊断码，不作为主 `error.code` 的稳定失败分类。
+
+### 2.4 v2 目标错误类型列表
 
 | 错误场景 | 错误类型 | 默认处理 | 备注 |
 |---------|---------|---------|------|
@@ -421,7 +443,7 @@ retry(same agent) → upgrade_tier → switch_agent → abort
 | Schema 校验失败 | `agent_error` | auto_repair | max_repair_attempts: 2 |
 | Diff 语义校验失败 | `agent_error` | auto_repair | diff_validator 处理 |
 
-### 2.4 控制参数
+### 2.5 控制参数
 
 | 参数 | 默认值 | 说明 |
 |------|-------|------|

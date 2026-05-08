@@ -69,11 +69,11 @@
 ## 3. 部分对齐
 
 ### provider / vendor / transport 语义分离
-现状：字段已分离，resolver 对显式 provider/vendor/transport 冲突执行严格 `RESOLVE_CONFLICT` 校验，并在 diagnostics details 中返回 requested/resolved provider、vendor、transport 以及 provider 支持范围。
+现状：字段已分离，resolver 对显式 provider/vendor/transport 冲突执行严格 `RESOLVE_CONFLICT` 校验，并在 diagnostics details 中返回 requested/resolved provider、vendor、transport 以及 provider 支持范围。`run` 的 known-agent 路径已在 spawn 前复用 resolver runtime preflight。
 
-不足：该严格校验主要覆盖 `resolve` 路径；`run` 路径仍以 agent/intent/gateway 路由为主，尚未完全复用 resolver runtime preflight。
+不足：`run` 仍以 agent/intent/gateway 路由为主，尚未把用户显式 provider/vendor/transport 参数暴露到 run 命令面。
 
-风险等级：中
+风险等级：低
 
 ### adapter doctor 职责
 现状：adapter 接口定义了 `doctor()`，但主诊断逻辑仍集中在 `core/doctor`。
@@ -97,9 +97,9 @@
 
 | 优先级 | 功能包 | 当前状态 | 说明 |
 |--------|--------|----------|------|
-| P0 | provider/vendor/transport 严格解析 | resolve 路径完成 | `resolve` 已有严格冲突校验、机器可读 details 和契约测试；run/doctor 集成留给 preflight 收口。 |
-| P0 | 平台与二进制前置检查 | 部分完成 | Resolver 层已有 `PLATFORM_UNSUPPORTED` / `BINARY_NOT_FOUND`，run/doctor 路径仍需统一。 |
-| P0 | 错误码闭环 | 部分完成 | JSON envelope 和 resolver 错误较完整；run/strategy/sandbox/config 错误仍需统一。 |
+| P0 | provider/vendor/transport 严格解析 | 已完成 v0.3 收口 | `resolve` 已有严格冲突校验、机器可读 details 和契约测试；run 的 known-agent preflight 已复用 resolver。 |
+| P0 | 平台与二进制前置检查 | 已完成 v0.3 收口 | Resolver 拥有 `PLATFORM_UNSUPPORTED` / `BINARY_NOT_FOUND`，doctor 与 run spawn 前路径已统一报告。 |
+| P0 | 错误码闭环 | 已完成 v0.3 基线 | JSON envelope、resolver/input/gateway/preflight 代表错误已有测试；run/strategy/sandbox/config 的细粒度错误码仍是后续增强。 |
 | P1 | 执行策略增强 | 部分完成 | `single/write_review/write_test_fix/high_quality` 已有；`--strategy`、`--verify`、`--max-iterations`、`--profile` 未完成。 |
 | P1 | 配置覆盖层 | 部分完成 | `registry.override.toml` 已有；`~/.cli-switch/config.yaml`、项目级 `.cli-switch.yaml`、`config show/set/reset` 未完成。 |
 | P1 | 输出校验和自动修复 | 未完成 | 尚无 Capability schema 校验、diff validator、auto repair pipeline。 |
@@ -110,9 +110,9 @@
 | P2 | Skill 工作流 | 未完成 | 仅有 Hermes skill 雏形，未实现 `cli-switch skill run` 或 YAML Skill DSL。 |
 
 估算完成度：
-- v0.3 可用基线：约 80%+。
-- PRD v2.0 完整目标：约 45%–55%。
-- 下一轮建议先收口 P0 三项，再进入 P1 配置与输出校验。
+- v0.3 可用基线：约 85%+。
+- PRD v2.0 完整目标：约 50%–60%。
+- 下一轮建议进入 P1 配置覆盖层与输出校验/自动修复。
 
 ### provider 解析策略收紧
 现状：
@@ -120,26 +120,34 @@
 - 不兼容时返回 `RESOLVE_CONFLICT`，并包含 requested/resolved/provider support details。
 
 剩余建议：
-- 在 run/doctor 的 runtime preflight 中复用 resolver 约束，避免命令路径行为分叉。
+- 若后续给 `run` 增加 `--provider/--vendor/--transport`，必须直接进入 resolver contract path，避免命令路径行为分叉。
 
 优先级：高
 
 ### 平台约束校验
-建议：
+现状：
 - 对 `tool.supportedPlatforms`
 - `profile.constraints.supportedPlatforms`
 - `requiresBinary`
-执行 resolver 期前校验
+已执行 resolver runtime preflight；doctor 与 run spawn 前路径复用该检查。
 
-优先级：高
+优先级：已完成 v0.3 基线
 
 ### 错误码体系闭环
-建议补齐并统一测试：
-- `CONFIG_NOT_FOUND`
+现状：
+- `INPUT_ERROR`
+- `MODEL_NOT_FOUND`
+- `RESOLVE_CONFLICT`
+- `GATEWAY_ACP_CONFLICT`
 - `BINARY_NOT_FOUND`
 - `PLATFORM_UNSUPPORTED`
+已有代表性 JSON golden 覆盖。
 
-优先级：中
+剩余建议：
+- 后续配置系统落地时补 `CONFIG_NOT_FOUND` / `CONFIG_INVALID`。
+- strategy/sandbox 执行错误拆分为稳定公开码，减少 `RUN_FAILED` catch-all。
+
+优先级：中（后续增强）
 
 ### 用户配置覆盖层
 详细设计里有 `loadUserOverrides` / `merge` 概念。
@@ -159,7 +167,6 @@
 - 核心契约已有自动化护栏
 
 距离严格对齐详细设计，还需要继续补：
-- run/doctor 路径的 provider/vendor/transport 与 resolver preflight 对齐
-- 平台与二进制约束前置校验
-- 错误码闭环
 - 用户配置覆盖层
+- 输出校验与自动修复
+- 完整文件沙盒与 patch-only/worktree 隔离
