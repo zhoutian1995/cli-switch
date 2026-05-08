@@ -11,7 +11,7 @@ This milestone turns the published v0.3.2 baseline into a tighter v2.0-ready run
 - Decimal phases are urgent insertions.
 
 - [x] **Phase 1: Runtime Contract Closure** - Finish provider/vendor/transport strictness, preflight checks, and error-code closure.
-- [ ] **Phase 2: Configuration Coverage** - Add global/project/task config layering and config commands.
+- [x] **Phase 2: Configuration Coverage** - Add global/project/task config layering and config commands.
 - [ ] **Phase 3: Output Validation and Repair** - Validate capability outputs and diffs, then add bounded repair.
 - [ ] **Phase 4: Execution Isolation** - Add patch-only, temp project copy, and worktree execution modes.
 - [ ] **Phase 5: Skill Workflow Foundation** - Add local reusable skill definitions and `skill run`.
@@ -48,7 +48,7 @@ Plans:
 Plans:
 - [x] 02-01: Add config schema, loader, and precedence rules.
 - [x] 02-02: Wire config into gateway/routing/tier/strategy resolution.
-- [ ] 02-03: Add `config` command group and tests.
+- [x] 02-03: Add `config` command group and tests.
 
 ### Phase 3: Output Validation and Repair
 **Goal**: Turn raw Agent output into validated capability results with bounded repair when schema or diff output is malformed.
@@ -101,7 +101,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Runtime Contract Closure | 3/3 | Completed | 2026-05-08 |
-| 2. Configuration Coverage | 2/3 | In Progress | - |
+| 2. Configuration Coverage | 3/3 | Completed | 2026-05-08 |
 | 3. Output Validation and Repair | 0/2 | Not started | - |
 | 4. Execution Isolation | 0/3 | Not started | - |
 | 5. Skill Workflow Foundation | 0/2 | Not started | - |
