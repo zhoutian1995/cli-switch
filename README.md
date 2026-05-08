@@ -1,191 +1,247 @@
 # cli-switch
 
-AI Agent 编排 CLI — 智能路由、多 Agent 调度、结构化输出。
+AI Agent Capability Router for coding CLIs.
 
-一句话：`cli-switch run "帮你重构这个模块" → 自动选 Agent → 执行 → 返回结果`
+`cli-switch` is a small orchestration layer that routes a task to the right AI
+agent, injects gateway credentials safely, and returns a consistent CLI/JSON
+result for scripts, automation, and higher-level agents.
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6+-blue.svg)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![Tests](https://img.shields.io/badge/tests-315%20passed-green.svg)](https://github.com/zhoutian1995/cli-switch)
+Current release: `0.3.0`
 
-## 安装
+## Status
+
+`cli-switch@0.3.0` is published on npm and is ready for early real-world use.
+It is not the full v2.0 product described in `docs/PRD.md` yet.
+
+What is working today:
+
+- Run tasks through Claude Code or Codex CLI.
+- Auto-route by intent/capability, or force an agent with `--agent`.
+- Use gateway credentials for Claude Code and Codex without changing their
+  global config.
+- Support self-hosted relay keys and OpenRouter-style environment variables.
+- Choose model tiers with `--tier economy|standard|premium`.
+- Use execution modes such as `single`, `write_review`, and `write_test_fix`.
+- Inspect runtime, environment, auth, diagnostics, models, providers, profiles,
+  and capability routing.
+- Use JSON output for automation with `--json`.
+- Isolate child process environment and scrub parent session variables.
+
+Known limits:
+
+- `--strategy balanced|high_quality|low_cost` is accepted but not implemented
+  as a runtime strategy selector yet.
+- Gateway injection currently targets Claude Code and Codex. Gemini and other
+  agents are registry/adapter extension targets, not primary supported paths.
+- Sandbox support is v0.1 scope: process env isolation and gateway HOME
+  isolation. Full file policy, patch-only output, worktree isolation, and temp
+  project copies are still future work.
+- User config override commands such as `config show/set/reset` are not
+  implemented yet.
+
+## Install
 
 ```bash
 npm install -g cli-switch
 ```
 
-从源码：
+Verify:
+
+```bash
+cli-switch --version
+cli-switch doctor --json
+```
+
+From source:
 
 ```bash
 git clone https://github.com/zhoutian1995/cli-switch.git
 cd cli-switch
-npm install && npm run build && npm link
+npm install
+npm run build
+npm link
 ```
 
-## 快速上手
+## Quick Start
+
+Dry-run the routing decision:
 
 ```bash
-# 自然语言执行 — 自动选择最合适的 Agent
-cli-switch run "帮我重构这个模块的类型定义"
-
-# 指定 Agent
-cli-switch run "write tests" --agent codex
-
-# 交互模式 — 终端选择 Agent 和编排模式
-cli-switch run "fix the login bug" --interactive
-
-# 只看路由决策，不执行
-cli-switch run "optimize database" --dry-run
-
-# JSON 输出（给脚本/Agent 用）
-cli-switch run "refactor auth" --json
-
-# 流式输出
-cli-switch run "implement quicksort" --stream
-
-# ACP 协议通信
-cli-switch run "debug this error" --acp
+cli-switch run "refactor the auth module" --dry-run
 ```
 
-## 所有命令
-
-### run — 智能执行
+Run with automatic routing:
 
 ```bash
-cli-switch run <任务描述> [选项]
-
-选项：
-  --mode <mode>         编排模式: single | orchestrator | handoff | review
-  --agent <agent>       指定 Agent: claude-code | codex
-  --strategy <name>     成本策略: balanced | high_quality | low_cost
-  --execution <mode>    执行模式: single | write_review | write_test_fix
-  --tier <tier>         模型档位: economy | standard | premium
-  --dry-run             只看路由决策
-  --interactive, -i     交互式选择
-  --stream              流式输出（默认开启）
-  --no-stream           关闭流式输出
-  --acp                 使用 ACP 协议
-  --json                JSON 输出
-  --timeout <秒>        超时时间（默认 120 秒）
-  --reviewer <agent>    评审模式指定审查 Agent
-  --no-git              跳过 Git 分支管理
-  --rollback            失败时自动回滚
+cli-switch run "write tests for the payment parser"
 ```
 
-### 静态分析命令
+Force Codex:
 
 ```bash
-cli-switch resolve --tool <工具> --model <模型> --json   # 解析运行时 spec
-cli-switch auth status --tool <工具> --json               # 检查认证状态
-cli-switch env --tool <工具> --json                       # 查看环境配置
-cli-switch doctor --tool <工具> --json                    # 综合诊断
-cli-switch list models [--tool <工具>] --json              # 列出支持的模型
-cli-switch list providers --json                          # 列出支持的提供商
-cli-switch list profiles --json                           # 列出运行配置
+cli-switch run "fix this TypeScript error" --agent codex
 ```
 
-### 其他
+Force Claude Code:
 
 ```bash
-cli-switch capabilities [--agent <agent>]    # Agent 能力矩阵
-cli-switch benchmark                         # 性能基准测试
-cli-switch --version                         # 版本号
-cli-switch --help                            # 帮助
+cli-switch run "review this architecture change" --agent claude-code
 ```
 
-## 工作原理
-
-```
-cli-switch run "任务描述"
-  │
-  ├─ 1. 意图解析 — 分析任务类型、复杂度、技术栈需求
-  │     └─ 规则匹配（零成本）或 LLM 分析（需 OPENROUTER_API_KEY）
-  │
-  ├─ 2. 智能路由 — 评估各 Agent 适配度，选最优 Agent
-  │     └─ 能力矩阵评分 + 历史数据 + 规则兜底
-  │
-  ├─ 3. Agent 调度 — 执行任务
-  │     ├─ 自动检测项目技术栈，注入上下文
-  │     ├─ 根据复杂度自动选模型（opus/sonnet/haiku）
-  │     ├─ 并发控制（最多 3 个并行）+ 超时保护
-  │     ├─ Git 分支保护 + 检查点 + Secret 检测
-  │     └─ 流式实时输出
-  │
-  └─ 4. 结果聚合 — 结构化输出
-        ├─ 失败自动回退（最多尝试 2 个备选 Agent）
-        └─ Git 自动提交或回滚
-```
-
-## 支持的 Agent
-
-| Agent | 命令 | 擅长 |
-|-------|------|------|
-| Claude Code | `claude` | 重构、调试、长上下文（200K） |
-| Codex CLI | `codex` | 测试生成、快速执行 |
-
-## 编排模式
-
-- **single** — 单 Agent 执行（默认）
-- **orchestrator** — 多 Agent 并行，各自独立完成同一任务
-- **handoff** — 链式接力，前一个 Agent 的输出传给下一个
-- **review** — 代码 + 审查，一个 Agent 写代码，另一个审查
-
-## 项目结构
-
-```
-cmd/              CLI 命令入口
-src/core/
-  intent/         意图解析
-  router/         智能路由（能力矩阵 + 自学习 + LLM）
-  dispatcher/     进程管理、ACP 协议桥接、流式输出
-  aggregator/     结果聚合、质量评估、失败回退
-  orchestrator/   多 Agent 编排
-  context/        技术栈检测、项目上下文
-  git/            Git 守卫、Secret 检测
-  llm/            LLM 服务
-  ui/             交互式提示
-src/adapters/     Agent 适配器（Claude Code / Codex）
-src/registry/     模型/Provider/Profile 注册表（TOML）
-src/platform/     平台抽象（路径、环境、文件系统）
-src/types/        TypeScript 类型定义
-schema/           JSON Schema
-test/             测试（单元、契约、E2E、压力）
-```
-
-## 开发
+Return JSON for automation:
 
 ```bash
-npm run build          # 构建
-npm run dev            # watch 模式
-npm test               # 全部测试（315 个）
-npm run smoke          # 安装后验证测试（9 个）
-npm run lint           # 类型检查
+cli-switch run "explain this repository" --json
 ```
 
-## 前置依赖
+Use a tier:
 
-- Node.js >= 18.0.0
-- 需要至少一个 AI CLI 已安装：`claude` / `codex`
-- LLM 路由需要设置 `OPENROUTER_API_KEY`（可选，不设则用规则路由）
+```bash
+cli-switch run "debug the failing e2e test" --tier premium
+```
 
-## Gateway / 中转站配置
+Use an execution mode:
 
-优先推荐显式配置 cli-switch gateway：
+```bash
+cli-switch run "implement login validation" --execution write_test_fix
+```
+
+## Gateway / Relay Configuration
+
+The preferred gateway variables are:
 
 ```bash
 export SWITCH_API_KEY=your-gateway-key
 export SWITCH_BASE_URL=https://your-relay.example.com/v1
 export SWITCH_MODEL_STANDARD=your-standard-model
+export SWITCH_MODEL_PREMIUM=your-premium-model
+export SWITCH_MODEL_ECONOMY=your-economy-model
 ```
 
-也支持常见别名：
+Self-hosted relay aliases are also supported:
 
-- 自建中转站：`SWITCH_RELAY_API_KEY` / `SWITCH_RELAY_BASE_URL`
-- OpenRouter：`OPENROUTER_API_KEY` / `OPENROUTER_BASE_URL`
+```bash
+export SWITCH_RELAY_API_KEY=your-relay-key
+export SWITCH_RELAY_BASE_URL=https://your-relay.example.com/v1
+```
 
-优先级：`SWITCH_*` > `SWITCH_RELAY_*` > `OPENROUTER_*`。不设置 gateway key 时，Agent 使用自己的原生认证环境。
+OpenRouter-style variables can be reused:
 
-## 许可证
+```bash
+export OPENROUTER_API_KEY=sk-or-v1-xxx
+export OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+```
 
-[MIT](./LICENSE)
+Priority order:
+
+```text
+SWITCH_* > SWITCH_RELAY_* > OPENROUTER_*
+```
+
+When gateway mode is enabled, `cli-switch` maps the gateway credentials into
+the agent-native variables needed by each CLI:
+
+| Agent | Injected variables | Model flag |
+| --- | --- | --- |
+| Claude Code | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` | `--model` |
+| Codex CLI | `OPENAI_API_KEY`, `OPENAI_BASE_URL` | `-m` |
+
+If no gateway key is configured, the agent uses its normal local auth.
+
+## Commands
+
+```bash
+cli-switch resolve       # Resolve tool/profile/model to a runtime spec
+cli-switch env           # Inspect environment and config sources
+cli-switch auth status   # Check auth status for a tool
+cli-switch doctor        # Run diagnostics
+cli-switch list          # List models, providers, and profiles
+cli-switch run           # Route and run an AI agent
+cli-switch capabilities  # Show the capability matrix
+cli-switch benchmark     # Run capability simulations across agents
+```
+
+Run help:
+
+```bash
+cli-switch run --help
+```
+
+Current `run` options:
+
+```text
+--mode <mode>        single|orchestrator|handoff|review
+--agent <agent>      claude-code|codex
+--strategy <name>    balanced|high_quality|low_cost (accepted, not implemented)
+--execution <mode>   single|write_review|write_test_fix
+--tier <tier>        economy|standard|premium
+--json               output JSON
+--dry-run            show routing decision without executing
+--timeout <seconds>  agent timeout, default 120
+--reviewer <agent>   reviewer agent for review mode
+--no-git             skip Git guard
+--rollback           try rollback on failure
+--stream             stream output, default true
+--no-stream          disable streaming
+--interactive        interactive agent selection
+--acp                JSON-RPC over stdio bridge
+```
+
+## Architecture
+
+At a high level:
+
+```text
+task input
+  -> intent/capability detection
+  -> tier and agent resolution
+  -> optional gateway env injection
+  -> sandboxed child process execution
+  -> text or JSON result
+```
+
+Important directories:
+
+```text
+cmd/                  CLI command entrypoints
+src/core/router/      capability and model routing
+src/core/gateway/     gateway config and env injection
+src/core/dispatcher/  agent process management
+src/core/sandbox/     environment and HOME isolation helpers
+src/core/strategy/    execution mode engine
+src/registry/         built-in agents, models, providers, profiles
+schema/               runtime and config JSON schemas
+test/                 unit, contract, e2e, and stress tests
+```
+
+## Development
+
+```bash
+npm run build
+npm test
+npm run smoke
+npm run lint
+```
+
+Current verification baseline:
+
+```text
+35 test files
+318 tests passing
+```
+
+## Product Roadmap
+
+The v2.0 target is documented in `docs/PRD.md`. The short version:
+
+- v0.3.0 is a usable npm baseline for routing, gateway injection, strategy
+  execution modes, diagnostics, and sandbox environment isolation.
+- Next important work is stricter provider/vendor/transport resolution,
+  platform and binary preflight checks, error-code closure, and user config
+  overrides.
+- Full file sandboxing, patch-only execution, worktree isolation, and richer
+  skill DSL support are future milestones.
+
+## License
+
+MIT
