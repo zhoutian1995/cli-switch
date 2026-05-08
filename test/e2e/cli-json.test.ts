@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -22,6 +24,47 @@ function runJson(args: string[], env?: NodeJS.ProcessEnv) {
       body: JSON.parse(failed.stdout ?? ''),
     };
   }
+}
+
+function createRegistryOverride(platforms: string[], binaryNames: string[] = ['definitely-missing-cli-switch-binary']): NodeJS.ProcessEnv {
+  const configHome = mkdtempSync(join(tmpdir(), 'cli-switch-e2e-'));
+  const configDir = join(configHome, 'cli-switch');
+  mkdirSync(configDir, { recursive: true });
+  writeFileSync(join(configDir, 'registry.override.toml'), `
+[tools.claude-code]
+id = "claude-code"
+displayName = "Claude Code"
+adapter = "claude-code"
+command = "claude"
+defaultProfile = "default"
+binaryNames = ${JSON.stringify(binaryNames)}
+supportedPlatforms = ${JSON.stringify(platforms)}
+
+[profiles.claude-code.default]
+tool = "claude-code"
+name = "default"
+description = "Test override profile"
+defaultModel = "sonnet"
+defaultVendor = "anthropic"
+defaultProvider = "anthropic"
+defaultTransport = "native"
+authMode = "oauth"
+
+[profiles.claude-code.default.capabilities]
+mcp = false
+skills = false
+toolPolicy = false
+structuredOutput = false
+
+[profiles.claude-code.default.constraints]
+requiresBinary = true
+`);
+
+  return {
+    XDG_CONFIG_HOME: configHome,
+    OPENROUTER_API_KEY: '',
+    SWITCH_API_KEY: '',
+  };
 }
 
 describe('CLI JSON golden', () => {
@@ -83,5 +126,28 @@ describe('CLI JSON golden', () => {
     expect(result.exitCode).toBe(2);
     expect(result.body.ok).toBe(false);
     expect(result.body.error.code).toBe('GATEWAY_ACP_CONFLICT');
+  });
+
+  it('doctor --json reports BINARY_NOT_FOUND from runtime preflight', () => {
+    const currentPlatform = process.platform === 'darwin' ? 'darwin' : 'linux';
+    const result = runCliJson(
+      ['doctor', '--tool', 'claude-code', '--json'],
+      createRegistryOverride([currentPlatform]),
+    );
+
+    expect(result.exitCode).toBe(3);
+    expect(result.body.ok).toBe(false);
+    expect(result.body.diagnostics.some((diagnostic: { code?: string }) => diagnostic.code === 'BINARY_NOT_FOUND')).toBe(true);
+  });
+
+  it('run --json stops before spawning when the selected platform is unsupported', () => {
+    const result = runCliJson(
+      ['run', 'hello', '--agent', 'claude-code', '--json', '--no-stream'],
+      createRegistryOverride(['definitely-unsupported-platform']),
+    );
+
+    expect(result.exitCode).toBe(3);
+    expect(result.body.ok).toBe(false);
+    expect(result.body.error.code).toBe('PLATFORM_UNSUPPORTED');
   });
 });

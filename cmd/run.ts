@@ -6,7 +6,6 @@ import { ProcessManager, resolveAgentCommand, getAgent } from '../src/core/dispa
 import { parseIntent } from '../src/core/intent/index.js';
 import { orchestrate, handoff, review } from '../src/core/orchestrator/index.js';
 import { resolveTier } from '../src/core/router/tier-resolver.js';
-import { loadBuiltins, createRegistryService } from '../src/registry/index.js';
 import { routeWithFallback, rankAgents, routeByCapability } from '../src/core/router/index.js';
 import { createLLMService } from '../src/core/llm/index.js';
 import { GitGuard } from '../src/core/git/guard.js';
@@ -23,7 +22,8 @@ import type { StrategyName, ExecutionState } from '../src/types/strategy.js';
 import { InteractivePrompt } from '../src/core/ui/prompt.js';
 import type { AgentId, OrchestrationMode, RunResult, TaskIntent } from '../src/types/agent.js';
 import type { CapabilityId } from '../src/types/capability.js';
-import { printJson, EXIT_CODES } from './_shared.js';
+import type { Diagnostic } from '../src/types/index.js';
+import { printJson, EXIT_CODES, createCommandContext, type CommandContext } from './_shared.js';
 import { loadGatewayConfig, resolveGateway, getEffectiveModel } from '../src/core/gateway/index.js';
 import type { GatewayConfig, Tier } from '../src/types/gateway.js';
 
@@ -263,6 +263,14 @@ export function createRunCommand(): Command {
           return;
         }
 
+        const commandContext = createCommandContext();
+        const preflightFailure = preflightAgents(commandContext, getModeAgents(mode, decision.agent, options.reviewer));
+        if (preflightFailure) {
+          printPreflightFailure(preflightFailure, options, warnings);
+          process.exitCode = preflightExitCode(preflightFailure.code);
+          return;
+        }
+
         // Resolve agent defaults
         const agentDef = getAgent(decision.agent);
         const timeoutMs = options.timeout
@@ -288,6 +296,17 @@ export function createRunCommand(): Command {
 
             const stepExec: import('../src/core/strategy/engine.js').StepExecutor = async (cap, agent, tier, prompt, context) => {
               const stepStart = Date.now();
+              const stepPreflightFailure = preflightAgent(commandContext, agent);
+              if (stepPreflightFailure) {
+                return {
+                  ok: false,
+                  output: stepPreflightFailure.message,
+                  exitCode: preflightExitCode(stepPreflightFailure.code),
+                  durationMs: Date.now() - stepStart,
+                  agent,
+                };
+              }
+
               const stepRuntime = resolveAgentRuntime(agent, tier, intent, gateway);
 
               // H1: per-capability prompt construction
@@ -441,6 +460,75 @@ function buildCapabilityPrompt(
   const prefix = CAPABILITY_PREFIXES[cap] ?? '';
   const ctx = context ? `\n\nPrevious step context:\n${context}` : '';
   return `${prefix}${originalPrompt}${ctx}`;
+}
+
+function getModeAgents(mode: OrchestrationMode, primary: AgentId, reviewer?: string): AgentId[] {
+  const agents: AgentId[] = [primary];
+  if (mode === 'orchestrator') {
+    agents.push('codex');
+  }
+  if (mode === 'handoff' || mode === 'review') {
+    agents.push((reviewer ?? 'codex') as AgentId);
+  }
+  return agents.filter((agent, index, all) => all.indexOf(agent) === index);
+}
+
+function preflightAgent(context: CommandContext, agent: AgentId): Diagnostic | null {
+  const result = context.resolver.resolve({ tool: agent });
+  if (result.ok) {
+    return null;
+  }
+
+  return result.diagnostics[0] ?? {
+    level: 'error',
+    code: 'RESOLVE_FAILED',
+    message: `Runtime preflight failed for ${agent}.`,
+    details: { agent },
+  };
+}
+
+function preflightAgents(context: CommandContext, agents: AgentId[]): Diagnostic | null {
+  for (const agent of agents) {
+    const failure = preflightAgent(context, agent);
+    if (failure) {
+      return failure;
+    }
+  }
+  return null;
+}
+
+function preflightExitCode(code: string): number {
+  if (code === 'BINARY_NOT_FOUND' || code === 'PLATFORM_UNSUPPORTED') {
+    return EXIT_CODES.environment;
+  }
+  return EXIT_CODES.resolve;
+}
+
+function printPreflightFailure(diagnostic: Diagnostic, options: RunOptions, warnings: string[]): void {
+  const message = diagnostic.message || 'Runtime preflight failed.';
+  const hint = diagnostic.code === 'BINARY_NOT_FOUND'
+    ? 'Install the target CLI or ensure PATH contains the executable before running the agent.'
+    : diagnostic.code === 'PLATFORM_UNSUPPORTED'
+      ? 'Use a supported platform or adjust the selected tool/profile.'
+      : 'Run `cli-switch resolve --json` or `cli-switch doctor --json` for details.';
+
+  if (options.json) {
+    printJson({
+      ok: false,
+      error: {
+        code: diagnostic.code,
+        message,
+        hint,
+        ...(diagnostic.details ? { details: diagnostic.details } : {}),
+      },
+      warnings,
+      diagnostics: [diagnostic],
+    });
+  } else {
+    console.error(`Error: ${message}`);
+    console.error(`code: ${diagnostic.code}`);
+    console.error(`hint: ${hint}`);
+  }
 }
 
 function resolveAgentRuntime(

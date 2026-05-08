@@ -1,5 +1,6 @@
 import type { CliAdapter, DoctorCheck, PlatformService } from '../../adapters/types.js';
 import { inspectAuth } from '../auth/auth-inspector.js';
+import { validateRuntimePreflight } from '../resolver/service.js';
 import type { Diagnostic, EffectiveRegistry, ProfileDefinition, ToolDefinition } from '../../types/index.js';
 
 export interface DoctorSummary {
@@ -58,51 +59,62 @@ function summarizeChecks(checks: DoctorCheck[]): DoctorSummary {
   };
 }
 
-function createBinaryCheck(tool: ToolDefinition, platform: PlatformService): {
+type RuntimePreflightError = Error & { code?: string; details?: Record<string, unknown> };
+
+function createRuntimePreflightCheck(tool: ToolDefinition, profile: ProfileDefinition, platform: PlatformService): {
   check: DoctorCheck;
   diagnostics: Diagnostic[];
 } {
-  const binaryPath = platform.findExecutable(tool.binaryNames);
+  try {
+    validateRuntimePreflight({ tool: tool.id, profile: profile.name }, tool, profile, platform);
 
-  if (binaryPath) {
     return {
       check: {
-        name: 'binary_found',
+        name: 'runtime_preflight',
         status: 'pass',
-        message: `Found executable at ${binaryPath}`,
+        message: 'Runtime platform and binary preflight passed.',
         details: {
+          platform: platform.getPlatform(),
           binaryNames: tool.binaryNames,
-          path: binaryPath,
         },
       },
       diagnostics: [
-        createDiagnostic('info', 'DOCTOR_BINARY_FOUND', `已找到 ${tool.displayName} 可执行文件。`, undefined, {
+        createDiagnostic('info', 'DOCTOR_RUNTIME_PREFLIGHT_OK', `${tool.displayName} 运行环境前置检查通过。`, undefined, {
           tool: tool.id,
-          path: binaryPath,
+          profile: profile.name,
         }),
       ],
     };
-  }
+  } catch (error) {
+    const resolved = error as RuntimePreflightError;
+    const code = resolved.code ?? 'RUNTIME_PREFLIGHT_FAILED';
+    const message = resolved.message || `${tool.displayName} runtime preflight failed.`;
 
-  return {
-    check: {
-      name: 'binary_found',
-      status: 'fail',
-      message: `Binary not found. Searched: ${tool.binaryNames.join(', ')}`,
-      details: {
-        binaryNames: tool.binaryNames,
+    return {
+      check: {
+        name: 'runtime_preflight',
+        status: 'fail',
+        message,
+        details: resolved.details ?? {
+          tool: tool.id,
+          profile: profile.name,
+          platform: platform.getPlatform(),
+          binaryNames: tool.binaryNames,
+        },
       },
-    },
-    diagnostics: [
-      createDiagnostic(
-        'error',
-        'DOCTOR_BINARY_MISSING',
-        `${tool.displayName} 可执行文件不存在。`,
-        '请先安装对应 CLI，或确认 PATH 已包含目标可执行文件。',
-        { tool: tool.id, binaryNames: tool.binaryNames },
-      ),
-    ],
-  };
+      diagnostics: [
+        createDiagnostic(
+          'error',
+          code,
+          message,
+          code === 'BINARY_NOT_FOUND'
+            ? '请先安装对应 CLI，或确认 PATH 已包含目标可执行文件。'
+            : '请切换到受支持的平台或调整 registry profile/tool 配置。',
+          resolved.details,
+        ),
+      ],
+    };
+  }
 }
 
 function createProfileCheck(tool: ToolDefinition, profile: ProfileDefinition, registryProfiles: Record<string, ProfileDefinition>): {
@@ -298,14 +310,14 @@ export function createDoctorService(
       const warnings: string[] = [];
       const diagnostics: Diagnostic[] = [];
 
-      const binary = createBinaryCheck(tool, platform);
+      const runtimePreflight = createRuntimePreflightCheck(tool, profile, platform);
       const profileCheck = createProfileCheck(tool, profile, registry.profiles);
       const auth = createAuthCheck(tool, profile, platform);
       const model = createModelCheck(profile, registry.models);
 
-      const checks = [binary.check, profileCheck.check, auth.check, model.check];
+      const checks = [runtimePreflight.check, profileCheck.check, auth.check, model.check];
 
-      diagnostics.push(...binary.diagnostics, ...profileCheck.diagnostics, ...auth.diagnostics, ...model.diagnostics);
+      diagnostics.push(...runtimePreflight.diagnostics, ...profileCheck.diagnostics, ...auth.diagnostics, ...model.diagnostics);
       warnings.push(...auth.warnings, ...model.warnings);
 
       const adapter = adapters[tool.adapter];

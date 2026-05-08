@@ -4,14 +4,14 @@ milestone: v0.3.2
 milestone_name: milestone
 status: executing
 stopped_at: GSD next milestone initialized; Phase 1 ready to plan
-last_updated: "2026-05-08T08:45:39.977Z"
-last_activity: 2026-05-08 -- Phase 01 execution started
+last_updated: "2026-05-08T08:54:13Z"
+last_activity: 2026-05-08 -- Phase 01 Plan 02 runtime preflight closure completed
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-05-08)
 ## Current Position
 
 Phase: 01 (Runtime Contract Closure) — EXECUTING
-Plan: 1 of 3
+Plan: 2 of 3
 Status: Executing Phase 01
-Last activity: 2026-05-08 -- Phase 01 execution started
+Last activity: 2026-05-08 -- Phase 01 Plan 02 runtime preflight closure completed
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 2
 - Average duration: n/a
 - Total execution time: 0 hours
 
@@ -53,6 +53,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Project]: Keep cli-switch focused on CLI/runtime capability routing, not mobile/desktop UI.
 - [Project]: Use Paseo as architecture/product reference only; do not copy AGPL code.
 - [Next milestone]: Close runtime contract reliability before config, output repair, and sandbox expansion.
+- [Phase 01 Plan 01]: Provider/vendor/transport conflicts now include structured resolver diagnostics.
+- [Phase 01 Plan 02]: Runtime platform and required-binary checks are resolver-owned and surfaced before known agent spawns.
 
 ### Pending Todos
 

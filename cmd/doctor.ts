@@ -1,18 +1,10 @@
 import { Command } from 'commander';
 
-import {
-  claudeCodeAdapter,
-  codexAdapter,
-} from '../src/adapters/index.js';
-import { createAuthService } from '../src/core/auth/index.js';
-import { createDoctorService } from '../src/core/doctor/index.js';
-import { createResolverService } from '../src/core/resolver/index.js';
-import { loadBuiltins, createRegistryService } from '../src/registry/index.js';
 import { renderDoctorResult, renderJson } from '../src/renderers/index.js';
 import {
   type CommandDoctorResult,
   EXIT_CODES,
-  createPlatformService,
+  createCommandContext,
   findProfileOrThrow,
   findToolOrThrow,
   printJson,
@@ -27,24 +19,15 @@ interface DoctorOptions {
 }
 
 function runDoctor(options: DoctorOptions): CommandDoctorResult[] {
-  const registry = loadBuiltins();
-  const registryService = createRegistryService(registry);
-  const platform = createPlatformService();
-  const adapters = {
-    [claudeCodeAdapter.id()]: claudeCodeAdapter,
-    [codexAdapter.id()]: codexAdapter,
-  };
-  createResolverService(registry, adapters);
-  createAuthService(platform);
-  const doctorService = createDoctorService(platform, registry, adapters);
+  const context = createCommandContext();
 
   const tools = options.tool
-    ? [findToolOrThrow(registryService, options.tool)]
-    : registryService.listTools();
+    ? [findToolOrThrow(context.registryService, options.tool)]
+    : context.registryService.listTools();
 
   return tools.map((tool) => {
-    const profile = findProfileOrThrow(registryService, tool, options.profile);
-    const result = doctorService.run(tool, profile);
+    const profile = findProfileOrThrow(context.registryService, tool, options.profile);
+    const result = context.doctorService.run(tool, profile);
     return {
       tool: tool.id,
       profile: profile.name,

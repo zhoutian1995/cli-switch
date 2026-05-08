@@ -85,8 +85,8 @@ function validateResolveContracts(
 }
 
 
-function validatePlatformConstraints(
-  request: NormalizedResolveRequest,
+export function validateRuntimePreflight(
+  request: Pick<NormalizedResolveRequest, 'tool' | 'profile'>,
   tool: { supportedPlatforms: string[]; binaryNames: string[] },
   profile: { constraints?: { supportedPlatforms?: string[]; requiresBinary?: boolean; requiresEnv?: string[] } },
   platform: PlatformService,
@@ -276,7 +276,7 @@ export function createResolverService(
         }
 
         const profile = selectProfile(normalizedRequest.tool, normalizedRequest.profile, registry);
-        validatePlatformConstraints(normalizedRequest, tool, profile, platform);
+        validateRuntimePreflight(normalizedRequest, tool, profile, platform);
         const { model, warnings: modelWarnings } = resolveModel(normalizedRequest, profile, registry);
         warnings.push(...modelWarnings);
 
