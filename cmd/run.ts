@@ -28,6 +28,12 @@ import { loadGatewayConfig, resolveGateway, getEffectiveModel } from '../src/cor
 import type { GatewayConfig, Tier } from '../src/types/gateway.js';
 import { loadConfig } from '../src/core/config/index.js';
 import type { CliSwitchConfig, EffectiveConfig } from '../src/types/config.js';
+import {
+  parseExecutionMode,
+  getExecutionModeConfig,
+  type ExecutionMode,
+} from '../src/core/sandbox/execution-mode.js';
+import { collectPatches, applyPatch } from '../src/core/sandbox/patch-collector.js';
 
 interface RunOptions {
   mode?: string;
@@ -44,6 +50,9 @@ interface RunOptions {
   stream?: boolean;
   interactive?: boolean;
   acp?: boolean;
+  executionMode?: string;
+  patchApply?: boolean;
+  keepTemp?: boolean;
 }
 
 export function createRunCommand(): Command {
@@ -65,6 +74,9 @@ export function createRunCommand(): Command {
     .option('--no-stream', 'disable streaming')
     .option('-i, --interactive', 'interactive agent selection')
     .option('--acp', 'use ACP protocol (JSON-RPC over stdio)')
+    .option('--execution-mode <mode>', 'execution mode: default|patch-only|temp-copy|worktree')
+    .option('--patch-apply', 'apply collected patches after patch-only execution')
+    .option('--keep-temp', 'preserve temporary sandbox files for debugging')
     .action(async (input: string, options: RunOptions) => {
       const startTime = Date.now();
 
@@ -192,6 +204,37 @@ export function createRunCommand(): Command {
           if (!options.json) {
             console.warn(`Warning: ${msg}`);
           }
+        }
+
+        // Execution mode (sandbox isolation): parse and validate
+        let executionMode: ExecutionMode;
+        try {
+          executionMode = parseExecutionMode(options.executionMode);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (options.json) {
+            printJson({ ok: false, error: { code: 'INPUT_ERROR', message: msg }, warnings: [], diagnostics: [] });
+          } else {
+            console.error(`Error: ${msg}`);
+          }
+          process.exit(EXIT_CODES.input);
+        }
+
+        // Placeholder warnings for modes not yet implemented
+        if (executionMode === 'temp-copy') {
+          console.warn('Warning: temp-copy execution mode is coming in plan 04-02. Falling back to default.');
+          executionMode = 'default';
+        } else if (executionMode === 'worktree') {
+          console.warn('Warning: worktree execution mode is coming in plan 04-03. Falling back to default.');
+          executionMode = 'default';
+        }
+
+        const executionModeConfig = getExecutionModeConfig(executionMode);
+
+        // For patch-only mode: append prompt suffix to input
+        let effectiveInput = input;
+        if (executionMode === 'patch-only' && executionModeConfig.promptSuffix) {
+          effectiveInput = input + executionModeConfig.promptSuffix;
         }
 
         // Gateway only supports single mode in PR1
@@ -397,7 +440,13 @@ export function createRunCommand(): Command {
           }
 
           // Single-step: existing fast path
-          await runSingle(decision.agent, input, { timeoutMs, maxMemoryMb, startTime, options, llm, gitGuard, gatewayEnv: gatewayResult?.available === true ? gatewayResult.env : undefined, effectiveModel: gatewayResult?.available === true ? effectiveModel.model : undefined, capability, gateway, effectiveTier, intent, warnings });
+          await runSingle(decision.agent, effectiveInput, { timeoutMs, maxMemoryMb, startTime, options, llm, gitGuard, gatewayEnv: gatewayResult?.available === true ? gatewayResult.env : undefined, effectiveModel: gatewayResult?.available === true ? effectiveModel.model : undefined, capability, gateway, effectiveTier, intent, warnings, executionMode });
+
+          // Patch-only: collect patches from agent output after execution
+          // (patches are collected inside runSingle's result; handled via printSingleResult)
+          if (executionMode === 'patch-only' && options.patchApply) {
+            warnings.push('Patch-only mode with --patch-apply: patches will be applied after agent execution.');
+          }
         } else if (mode === 'orchestrator') {
           const agents = ([decision.agent, 'codex'] as AgentId[]).filter(
             (a, i, arr) => arr.indexOf(a) === i,
@@ -578,8 +627,9 @@ function resolveAgentRuntime(
 async function runSingle(
   agentId: AgentId,
   input: string,
-  ctx: { timeoutMs: number; maxMemoryMb: number; startTime: number; options: RunOptions; llm?: InstanceType<typeof import('../src/core/llm/service.js').LLMService> | null; gitGuard?: GitGuard; gatewayEnv?: Record<string, string>; effectiveModel?: string; capability?: import('../src/types/capability.js').CapabilityId; gateway?: GatewayConfig | null; effectiveTier?: Tier; intent?: TaskIntent; warnings?: string[] },
+  ctx: { timeoutMs: number; maxMemoryMb: number; startTime: number; options: RunOptions; llm?: InstanceType<typeof import('../src/core/llm/service.js').LLMService> | null; gitGuard?: GitGuard; gatewayEnv?: Record<string, string>; effectiveModel?: string; capability?: import('../src/types/capability.js').CapabilityId; gateway?: GatewayConfig | null; effectiveTier?: Tier; intent?: TaskIntent; warnings?: string[]; executionMode?: ExecutionMode },
 ): Promise<void> {
+  const isPatchOnly = ctx.executionMode === 'patch-only';
   const { program, args } = resolveAgentCommand(agentId, input, ctx.effectiveModel);
   const pm = new ProcessManager();
 
@@ -674,6 +724,64 @@ async function runSingle(
         return;
       }
     } catch { /* non-critical */ }
+  }
+
+  // Patch-only: collect and display patches from agent output
+  if (isPatchOnly) {
+    const patchResult = collectPatches(result.output);
+
+    if (ctx.options.json) {
+      // Include patch results in JSON output
+      result = { ...result, output: JSON.stringify({
+        output: result.output,
+        executionMode: 'patch-only',
+        patchResult: {
+          filesChanged: patchResult.diffs.map(d => d.path),
+          violations: patchResult.violations,
+          clean: patchResult.clean,
+          patchCount: patchResult.diffs.length,
+        },
+      })};
+    } else {
+      // Text output: show patch summary
+      console.log('\n── Patch-Only Mode ─────────────────');
+      console.log(`  Files changed: ${patchResult.diffs.length}`);
+      if (patchResult.diffs.length > 0) {
+        for (const diff of patchResult.diffs) {
+          console.log(`    • ${diff.path} (${diff.hunks.length} hunk${diff.hunks.length !== 1 ? 's' : ''})`);
+        }
+      }
+      if (patchResult.violations.length > 0) {
+        console.log(`  ⚠ Protected path violations:`);
+        for (const v of patchResult.violations) {
+          console.log(`    • ${v}`);
+        }
+      }
+      if (patchResult.clean) {
+        console.log('  ✓ No protected path violations');
+      }
+      if (patchResult.diffs.length === 0) {
+        console.log('  No diffs found in agent output.');
+      }
+
+      // Apply patches if --patch-apply is set
+      if (ctx.options.patchApply && patchResult.rawDiffs) {
+        console.log('\n── Applying Patches ─────────────────');
+        const applyResult = applyPatch(patchResult.rawDiffs, process.cwd());
+        if (applyResult.applied) {
+          console.log('  ✓ Patches applied successfully');
+        } else if (applyResult.success && !applyResult.applied) {
+          console.log('  ✓ Patches validated (dry-run mode)');
+        } else {
+          console.log(`  ✗ Patch apply failed: ${applyResult.error}`);
+        }
+      }
+
+      console.log('');
+      // Still show agent output for context
+      console.log(result.output);
+      return;
+    }
   }
 
   printSingleResult(result, ctx.options, ctx.warnings);

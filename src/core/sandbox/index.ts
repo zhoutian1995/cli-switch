@@ -108,3 +108,21 @@ async function applyHomeTemplate(home: string): Promise<void> {
 function sanitizeTaskId(taskId: string): string {
   return taskId.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 80) || 'task';
 }
+
+// ─── Barrel exports for execution isolation (Phase 04) ───────
+
+export {
+  type ExecutionMode,
+  type ExecutionModeConfig,
+  parseExecutionMode,
+  getPatchOnlyPromptSuffix,
+  getExecutionModeConfig,
+} from './execution-mode.js';
+
+export {
+  type PatchResult,
+  type ApplyResult,
+  collectPatches,
+  extractDiffBlocks,
+  applyPatch,
+} from './patch-collector.js';
