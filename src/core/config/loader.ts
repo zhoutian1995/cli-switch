@@ -31,7 +31,7 @@ function readYamlFile(filePath: string): { data: unknown; error?: string } {
   try {
     const raw = readFileSync(filePath, 'utf-8');
     const parsed = yaml.load(raw);
-    if (parsed === null || parsed === undefined || typeof parsed !== 'object') {
+    if (parsed == null || typeof parsed !== 'object') {
       return { data: null, error: 'YAML file is empty or not an object' };
     }
     return { data: parsed as Record<string, unknown> };
@@ -78,14 +78,13 @@ function readSource(
   const raw = readYamlFile(filePath);
   if (raw.data !== null) {
     source.loaded = true;
-    if (raw.error) {
-      source.invalid = raw.error;
-      errors.push({ code: 'CONFIG_INVALID', message: raw.error, path: filePath });
-    } else {
-      const validated = validateConfig(raw.data, sourceLabel);
-      config = validated.config;
-      errors.push(...validated.errors);
-    }
+  }
+  if (raw.error) {
+    errors.push({ code: 'CONFIG_INVALID', message: raw.error, path: filePath });
+  } else if (raw.data !== null) {
+    const validated = validateConfig(raw.data, sourceLabel);
+    config = validated.config;
+    errors.push(...validated.errors);
   }
 
   return { config, source, errors };
