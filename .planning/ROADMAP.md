@@ -101,7 +101,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Runtime Contract Closure | 3/3 | Completed | 2026-05-08 |
-| 2. Configuration Coverage | 0/3 | Not started | - |
+| 2. Configuration Coverage | 0/3 | Ready | - |
 | 3. Output Validation and Repair | 0/2 | Not started | - |
 | 4. Execution Isolation | 0/3 | Not started | - |
 | 5. Skill Workflow Foundation | 0/2 | Not started | - |
