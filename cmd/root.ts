@@ -13,6 +13,7 @@ import { createResolveCommand } from './resolve.js';
 import { createRunCommand } from './run.js';
 import { createCapabilitiesCommand } from './capabilities.js';
 import { createBenchmarkCommand } from './benchmark.js';
+import { createConfigCommand } from './config.js';
 import { EXIT_CODES, renderJson, toErrorEnvelope } from './_shared.js';
 
 type PackageJson = {
@@ -36,7 +37,7 @@ program
   .version(readVersion())
   .addHelpText(
     'after',
-    '\nCommands:\n  resolve       Resolve a runtime spec\n  env           Inspect environment and config\n  auth          Check authentication status\n  doctor        Run diagnostics\n  list          List supported static metadata\n  run           Run an AI agent with smart routing\n  capabilities  Show agent capability matrix\n  benchmark     Run performance benchmarks across agents',
+    '\\nCommands:\\n  resolve       Resolve a runtime spec\\n  env           Inspect environment and config\\n  config        Inspect and manage configuration\\n  auth          Check authentication status\\n  doctor        Run diagnostics\\n  list          List supported static metadata\\n  run           Run an AI agent with smart routing\\n  capabilities  Show agent capability matrix\\n  benchmark     Run performance benchmarks across agents',
   );
 
 program.addCommand(createResolveCommand());
@@ -47,6 +48,7 @@ program.addCommand(createListCommand());
 program.addCommand(createRunCommand());
 program.addCommand(createCapabilitiesCommand());
 program.addCommand(createBenchmarkCommand());
+program.addCommand(createConfigCommand());
 
 try {
   await program.parseAsync(process.argv);
