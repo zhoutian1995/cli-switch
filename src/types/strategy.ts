@@ -63,6 +63,13 @@ export interface ErrorRecord {
 
 // ─── Execution State ──────────────────────────────────────────
 
+/** Validated output from a capability execution */
+export type ValidatedOutput = {
+  status: 'success' | 'failed';
+  summary: string;
+  [key: string]: unknown;
+};
+
 /** 单步执行历史 */
 export interface StepHistory {
   step: number;
@@ -70,6 +77,8 @@ export interface StepHistory {
   status: 'success' | 'failed';
   agent: AgentId;
   output?: string;
+  /** Validated structured output (if validation was performed) */
+  validatedOutput?: ValidatedOutput;
   durationMs: number;
   /** Per-step token usage (runtime-spec §1.2) */
   tokensUsed?: number;
