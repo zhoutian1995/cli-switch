@@ -169,6 +169,23 @@ npm run lint           # 类型检查
 - 需要至少一个 AI CLI 已安装：`claude` / `codex`
 - LLM 路由需要设置 `OPENROUTER_API_KEY`（可选，不设则用规则路由）
 
+## Gateway / 中转站配置
+
+优先推荐显式配置 cli-switch gateway：
+
+```bash
+export SWITCH_API_KEY=your-gateway-key
+export SWITCH_BASE_URL=https://your-relay.example.com/v1
+export SWITCH_MODEL_STANDARD=your-standard-model
+```
+
+也支持常见别名：
+
+- 自建中转站：`SWITCH_RELAY_API_KEY` / `SWITCH_RELAY_BASE_URL`
+- OpenRouter：`OPENROUTER_API_KEY` / `OPENROUTER_BASE_URL`
+
+优先级：`SWITCH_*` > `SWITCH_RELAY_*` > `OPENROUTER_*`。不设置 gateway key 时，Agent 使用自己的原生认证环境。
+
 ## 许可证
 
 [MIT](./LICENSE)

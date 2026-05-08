@@ -18,8 +18,10 @@ describe('Gateway', () => {
   });
 
   describe('loadGatewayConfig', () => {
-    it('returns null when SWITCH_API_KEY is not set', () => {
+    it('returns null when no gateway api key alias is set', () => {
       delete process.env.SWITCH_API_KEY;
+      delete process.env.SWITCH_RELAY_API_KEY;
+      delete process.env.OPENROUTER_API_KEY;
       expect(loadGatewayConfig()).toBeNull();
     });
 
@@ -39,6 +41,43 @@ describe('Gateway', () => {
 
       const config = loadGatewayConfig();
       expect(config!.baseUrl).toBe('https://openrouter.ai/api/v1');
+    });
+
+    it('loads config from self-hosted relay env aliases', () => {
+      delete process.env.SWITCH_API_KEY;
+      delete process.env.SWITCH_BASE_URL;
+      process.env.SWITCH_RELAY_API_KEY = 'relay-key';
+      process.env.SWITCH_RELAY_BASE_URL = 'https://relay.example.com/v1';
+
+      const config = loadGatewayConfig();
+      expect(config!.apiKey).toBe('relay-key');
+      expect(config!.baseUrl).toBe('https://relay.example.com/v1');
+    });
+
+    it('loads config from OpenRouter env aliases', () => {
+      delete process.env.SWITCH_API_KEY;
+      delete process.env.SWITCH_RELAY_API_KEY;
+      delete process.env.SWITCH_BASE_URL;
+      delete process.env.SWITCH_RELAY_BASE_URL;
+      process.env.OPENROUTER_API_KEY = 'openrouter-key';
+      process.env.OPENROUTER_BASE_URL = 'https://openrouter.example.com/api/v1';
+
+      const config = loadGatewayConfig();
+      expect(config!.apiKey).toBe('openrouter-key');
+      expect(config!.baseUrl).toBe('https://openrouter.example.com/api/v1');
+    });
+
+    it('keeps SWITCH_* gateway env aliases higher priority than provider aliases', () => {
+      process.env.SWITCH_API_KEY = 'switch-key';
+      process.env.SWITCH_BASE_URL = 'https://switch.example.com/v1';
+      process.env.SWITCH_RELAY_API_KEY = 'relay-key';
+      process.env.SWITCH_RELAY_BASE_URL = 'https://relay.example.com/v1';
+      process.env.OPENROUTER_API_KEY = 'openrouter-key';
+      process.env.OPENROUTER_BASE_URL = 'https://openrouter.example.com/api/v1';
+
+      const config = loadGatewayConfig();
+      expect(config!.apiKey).toBe('switch-key');
+      expect(config!.baseUrl).toBe('https://switch.example.com/v1');
     });
 
     it('loads tier model mappings from env', () => {

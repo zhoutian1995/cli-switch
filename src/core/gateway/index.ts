@@ -12,6 +12,8 @@ import {
   type TierModelMap,
   type AgentKeyMap,
   GATEWAY_ENV_KEYS,
+  GATEWAY_API_KEY_ENV_ALIASES,
+  GATEWAY_BASE_URL_ENV_ALIASES,
   AGENT_ENV_OVERRIDE,
 } from '../../types/gateway.js';
 
@@ -31,18 +33,26 @@ export interface ResolvedGateway {
   reason: string;
 }
 
+function firstEnvValue(keys: readonly string[]): string | undefined {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (value) return value;
+  }
+  return undefined;
+}
+
 /**
  * Load gateway config from environment variables + optional overrides.
  *
- * Priority: overrides > env vars
+ * Priority: overrides > SWITCH_* > relay aliases > provider-specific gateway aliases.
  */
 export function loadGatewayConfig(overrides?: Partial<GatewayConfig>): GatewayConfig | null {
-  const apiKey = overrides?.apiKey ?? process.env[GATEWAY_ENV_KEYS.apiKey];
+  const apiKey = overrides?.apiKey ?? firstEnvValue(GATEWAY_API_KEY_ENV_ALIASES);
   if (!apiKey) return null;
 
   const baseUrl =
     overrides?.baseUrl ??
-    process.env[GATEWAY_ENV_KEYS.baseUrl] ??
+    firstEnvValue(GATEWAY_BASE_URL_ENV_ALIASES) ??
     'https://openrouter.ai/api/v1';
 
   const models: TierModelMap = overrides?.models ?? {

@@ -27,7 +27,17 @@ interface EnvOptions {
 }
 
 function collectEnvironment(toolId?: string): Record<string, string | { present: boolean; masked: boolean; value?: string }> {
-  const keys = ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME'];
+  const keys = [
+    'XDG_CONFIG_HOME',
+    'XDG_DATA_HOME',
+    'XDG_CACHE_HOME',
+    'SWITCH_API_KEY',
+    'SWITCH_BASE_URL',
+    'SWITCH_RELAY_API_KEY',
+    'SWITCH_RELAY_BASE_URL',
+    'OPENROUTER_API_KEY',
+    'OPENROUTER_BASE_URL',
+  ];
 
   if (toolId === 'codex') {
     keys.push('OPENAI_API_KEY');

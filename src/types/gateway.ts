@@ -49,6 +49,20 @@ export const GATEWAY_ENV_KEYS = {
   baseUrl: 'SWITCH_BASE_URL',
 } as const;
 
+/** Accepted environment variable aliases for gateway-style routing. */
+export const GATEWAY_API_KEY_ENV_ALIASES = [
+  'SWITCH_API_KEY',
+  'SWITCH_RELAY_API_KEY',
+  'OPENROUTER_API_KEY',
+] as const;
+
+/** Accepted base URL aliases for gateway-style routing. */
+export const GATEWAY_BASE_URL_ENV_ALIASES = [
+  'SWITCH_BASE_URL',
+  'SWITCH_RELAY_BASE_URL',
+  'OPENROUTER_BASE_URL',
+] as const;
+
 /**
  * Environment variable names to OVERRIDE in the agent subprocess.
  * These replace the native API keys so the agent routes through the gateway.

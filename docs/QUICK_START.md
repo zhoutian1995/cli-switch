@@ -33,6 +33,24 @@ export OPENROUTER_API_KEY=sk-or-v1-xxx
 # 现在会用 LLM 分析你的意图
 ```
 
+## 配置 Agent Gateway / 中转站（可选）
+
+```
+# 推荐：显式 cli-switch gateway
+export SWITCH_API_KEY=your-gateway-key
+export SWITCH_BASE_URL=https://your-relay.example.com/v1
+export SWITCH_MODEL_STANDARD=your-standard-model
+
+# 自建中转站别名也可用
+export SWITCH_RELAY_API_KEY=your-relay-key
+export SWITCH_RELAY_BASE_URL=https://your-relay.example.com/v1
+
+# OpenRouter key 也可复用为 Agent gateway key
+export OPENROUTER_API_KEY=sk-or-v1-xxx
+```
+
+优先级：`SWITCH_*` > `SWITCH_RELAY_*` > `OPENROUTER_*`。
+
 ## 下一步
 
 - 阅读 README.md 了解完整功能

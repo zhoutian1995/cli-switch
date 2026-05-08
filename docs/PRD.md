@@ -99,6 +99,12 @@ SWITCH_API_KEY=xxx
 SWITCH_BASE_URL=https://your-gateway
 ```
 
+当前实现也支持环境变量别名：
+- 自建中转站：`SWITCH_RELAY_API_KEY` / `SWITCH_RELAY_BASE_URL`
+- OpenRouter：`OPENROUTER_API_KEY` / `OPENROUTER_BASE_URL`
+
+优先级：`SWITCH_*` > `SWITCH_RELAY_*` > `OPENROUTER_*`。
+
 ### 3.2 ❗ Agent ≠ 模型
 
 ### 3.3 PR1 Gateway 支持范围
