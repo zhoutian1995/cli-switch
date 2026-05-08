@@ -34,6 +34,8 @@ import {
   type ExecutionMode,
 } from '../src/core/sandbox/execution-mode.js';
 import { collectPatches, applyPatch } from '../src/core/sandbox/patch-collector.js';
+import { createTempCopy, computeCopyDiff } from '../src/core/sandbox/temp-copy.js';
+import { validateDiffPaths, parseUnifiedDiff } from '../src/core/validation/diff-validator.js';
 
 interface RunOptions {
   mode?: string;
@@ -222,8 +224,7 @@ export function createRunCommand(): Command {
 
         // Placeholder warnings for modes not yet implemented
         if (executionMode === 'temp-copy') {
-          console.warn('Warning: temp-copy execution mode is coming in plan 04-02. Falling back to default.');
-          executionMode = 'default';
+          // temp-copy is now implemented — no fallback
         } else if (executionMode === 'worktree') {
           console.warn('Warning: worktree execution mode is coming in plan 04-03. Falling back to default.');
           executionMode = 'default';
@@ -630,8 +631,17 @@ async function runSingle(
   ctx: { timeoutMs: number; maxMemoryMb: number; startTime: number; options: RunOptions; llm?: InstanceType<typeof import('../src/core/llm/service.js').LLMService> | null; gitGuard?: GitGuard; gatewayEnv?: Record<string, string>; effectiveModel?: string; capability?: import('../src/types/capability.js').CapabilityId; gateway?: GatewayConfig | null; effectiveTier?: Tier; intent?: TaskIntent; warnings?: string[]; executionMode?: ExecutionMode },
 ): Promise<void> {
   const isPatchOnly = ctx.executionMode === 'patch-only';
+  const isTempCopy = ctx.executionMode === 'temp-copy';
   const { program, args } = resolveAgentCommand(agentId, input, ctx.effectiveModel);
   const pm = new ProcessManager();
+
+  // Temp-copy: create isolated project copy before execution
+  let tempCopyCtx: Awaited<ReturnType<typeof createTempCopy>> | null = null;
+  if (isTempCopy) {
+    tempCopyCtx = await createTempCopy(process.cwd(), {
+      keepTemp: Boolean(ctx.options.keepTemp),
+    });
+  }
 
   // ACP mode: use ACPBridge instead of direct spawn
   if (ctx.options.acp) {
@@ -642,12 +652,18 @@ async function runSingle(
       bridge.onChunk((chunk) => writer!.writeChunk(chunk));
     }
     await bridge.connect(program, args, {
-      cwd: process.cwd(),
+      cwd: tempCopyCtx?.copyDir ?? process.cwd(),
       timeoutMs: ctx.timeoutMs,
     });
     const result = await bridge.sendTask(input);
     if (writer) writer.complete(true);
     await bridge.close();
+
+    // Temp-copy: compute diff after ACP execution
+    if (isTempCopy && tempCopyCtx) {
+      await handleTempCopyPostExec(tempCopyCtx, ctx);
+    }
+
     const runResult: RunResult = {
       agent: agentId,
       capability: ctx.capability,
@@ -668,6 +684,7 @@ async function runSingle(
     timeoutMs: ctx.timeoutMs,
     maxMemoryMb: ctx.maxMemoryMb,
     command: program,
+    cwd: tempCopyCtx?.copyDir,
     gitGuard: ctx.gitGuard,
     gatewayEnv: ctx.gatewayEnv,
     sandbox: { homeIsolation: Boolean(ctx.gatewayEnv) },
@@ -784,7 +801,80 @@ async function runSingle(
     }
   }
 
+  // Temp-copy: compute diff and optionally apply after execution
+  if (isTempCopy && tempCopyCtx) {
+    const tempCopyInfo = await handleTempCopyPostExec(tempCopyCtx, ctx);
+    // Augment output with temp-copy info
+    if (ctx.options.json) {
+      result = {
+        ...result,
+        output: JSON.stringify({
+          output: typeof result.output === 'string' && result.output.startsWith('{')
+            ? JSON.parse(result.output) : result.output,
+          executionMode: 'temp-copy',
+          tempCopy: tempCopyInfo,
+        }),
+      };
+    } else {
+      console.log('\n── Temp-Copy Mode ─────────────────');
+      console.log(`  Copy dir:    ${tempCopyInfo.copyDir}`);
+      console.log(`  Files changed: ${tempCopyInfo.diffFiles}`);
+      if (tempCopyInfo.violations.length > 0) {
+        console.log(`  ⚠ Protected path violations:`);
+        for (const v of tempCopyInfo.violations) {
+          console.log(`    • ${v}`);
+        }
+      }
+      if (tempCopyInfo.clean) {
+        console.log('  ✓ No protected path violations');
+      }
+      if (tempCopyInfo.applied) {
+        console.log('  ✓ Diff applied to original directory');
+      }
+      console.log('');
+    }
+  }
+
   printSingleResult(result, ctx.options, ctx.warnings);
+}
+
+/**
+ * Handle post-execution logic for temp-copy mode.
+ * Computes diff, validates paths, optionally applies to original, and cleans up.
+ */
+async function handleTempCopyPostExec(
+  tempCopyCtx: Awaited<ReturnType<typeof createTempCopy>>,
+  ctx: { options: RunOptions; warnings?: string[] },
+): Promise<{ copyDir: string; diffFiles: number; violations: string[]; clean: boolean; applied: boolean }> {
+  const { srcDir, copyDir, cleanup } = tempCopyCtx;
+
+  // Compute diff between original and modified copy
+  const diffText = await computeCopyDiff(srcDir, copyDir);
+
+  // Parse and validate diff paths
+  const parseResult = parseUnifiedDiff(diffText);
+  const { violations, clean } = validateDiffPaths(parseResult.files);
+
+  // Apply diff to original if --patch-apply is set and diff exists
+  let applied = false;
+  if (ctx.options.patchApply && diffText.trim()) {
+    const applyResult = applyPatch(diffText, srcDir);
+    applied = applyResult.applied;
+    if (!applied && applyResult.error) {
+      (ctx.warnings ?? []).push(`Temp-copy patch apply failed: ${applyResult.error}`);
+    }
+  }
+
+  // Cleanup temp copy
+  await cleanup();
+
+  return {
+    copyDir,
+    diffFiles: parseResult.files.length,
+    violations,
+    clean,
+    applied,
+  };
 }
 
 function printSingleResult(result: RunResult, options: RunOptions, warnings: string[] = []): void {

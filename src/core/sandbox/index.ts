@@ -126,3 +126,10 @@ export {
   extractDiffBlocks,
   applyPatch,
 } from './patch-collector.js';
+
+export {
+  type TempCopyConfig,
+  type TempCopyContext,
+  createTempCopy,
+  computeCopyDiff,
+} from './temp-copy.js';
