@@ -1,8 +1,8 @@
 # cli-switch 产品需求文档 v2.0
 
-> 更新日期：2026-05-06
+> 更新日期：2026-05-08
 >
-> 本文档描述 **v2.0 目标产品形态**。当前仓库版本为 v0.3.0，已具备基础路由、调度和多 Agent 支持；本文档用于统一后续重构和增强方向。
+> 本文档描述 **v2.0 目标产品形态**。当前仓库版本为 v0.3.2，已发布到 npm，并具备基础路由、调度、Gateway 注入、Strategy 执行模式和多 Agent 支持；本文档用于统一后续重构和增强方向。
 
 ## 文档体系
 
@@ -244,30 +244,30 @@ Skill（技能）     = 可复用模板（登录功能开发、Bug 修复流程�
 ### v0.1 — 基础可运行
 
 - [x] 沙盒环境（进程隔离 + 环境变量注入；不包含完整文件系统白名单）
-- [ ] Claude Code 适配器（单步执行）
+- [x] Claude Code 适配器（单步执行）
 - [x] Gateway 注入（SWITCH_API_KEY / SWITCH_BASE_URL 映射到 Agent 原生 env；single mode）
-- [ ] JSON 输出
-- [ ] `cli-switch run <任务> --agent claude-code`
+- [x] JSON 输出
+- [x] `cli-switch run <任务> --agent claude-code`
 
 ### v0.2 — 双 Agent
 
-- [ ] Codex 适配器
-- [ ] Auto 模式（规则路由：能力 → Agent）
-- [ ] Tier 路由（economy / standard / premium）
-- [ ] `cli-switch run <任务>` （自动选 Agent）
+- [x] Codex 适配器
+- [x] Auto 模式（规则路由：能力 → Agent）
+- [x] Tier 路由（economy / standard / premium）
+- [x] `cli-switch run <任务>` （自动选 Agent）
 
 ### v0.3 — 编排
 
-- [ ] Strategy 引擎（多步编排）
-- [ ] Loop 自动迭代（写→测→修）
-- [ ] 失败分类 + 升级链
-- [ ] `cli-switch run <任务> --execution write_test_fix`
+- [x] Strategy 引擎（多步编排）
+- [x] Loop 自动迭代（写→测→修）
+- [x] 失败分类 + 升级链（基础版；错误码闭环仍需收口）
+- [x] `cli-switch run <任务> --execution write_test_fix`
 
 ### v0.4 — 体验
 
-- [ ] Skill 基础版（YAML 模板）
-- [ ] Custom 模式（能力路由配置）
-- [ ] 项目级配置覆盖
+- [ ] Skill 基础版（YAML 模板；当前仅有 Hermes skill 雏形）
+- [ ] Custom 模式（能力路由配置；当前 `--strategy` 仍未真正生效）
+- [ ] 项目级配置覆盖（当前 registry override 存在，但全局/项目/任务三级配置未完成）
 - [ ] `cli-switch skill run login_dev`
 
 ### v0.5 — 健壮性
@@ -275,7 +275,13 @@ Skill（技能）     = 可复用模板（登录功能开发、Bug 修复流程�
 - [ ] Diff Repair Pipeline
 - [ ] Context Budget 控制
 - [ ] 输出校验 + 自动修复
-- [ ] `cli-switch doctor` 诊断
+- [x] `cli-switch doctor` 诊断（基础版已实现；adapter 专项诊断仍需增强）
+
+### 下一轮收口顺序（2026-05-08）
+
+1. 短期：收紧 provider/vendor/transport 解析、平台与二进制前置检查、错误码闭环。
+2. 中期：增强执行策略、配置覆盖层、输出校验和自动修复。
+3. 后续：完整文件沙盒、patch-only 执行、临时项目副本、worktree 隔离和更完整的 Skill 工作流。
 
 ### 暂不做
 
@@ -297,7 +303,7 @@ Skill（技能）     = 可复用模板（登录功能开发、Bug 修复流程�
 | Claude Code | 重型执行器 | 长上下文、复杂推理、架构级任务 |
 | Codex CLI | 轻型执行器 | 快速生成、测试、简单任务 |
 
-当前 v0.3.0 已通过 registry/adapter 体系预留并部分支持 Gemini / OpenCode / Aider 等 Agent。v2.0 的核心产品验证仍以 Claude Code + Codex CLI 为主，其他 Agent 作为扩展适配器接入。
+当前 v0.3.2 已通过 registry/adapter 体系预留并部分支持 Gemini / OpenCode / Aider 等 Agent。v2.0 的核心产品验证仍以 Claude Code + Codex CLI 为主，其他 Agent 作为扩展适配器接入。
 
 ### 多 Agent 协作
 
@@ -307,7 +313,7 @@ v2.0 不暴露显式 MCP Agent-to-Agent 能力。多 Agent 协作只通过 Strat
 
 ## 七、CLI 命令
 
-### 当前命令面（v0.3.0）
+### 当前命令面（v0.3.2）
 
 当前 `cmd/root.ts` 注册的命令：
 

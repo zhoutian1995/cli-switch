@@ -91,6 +91,29 @@
 
 ## 4. 未完全对齐 / 后续建议
 
+## 4.1 v0.3.2 对 PRD v2.0 的剩余任务盘点
+
+当前 `cli-switch@0.3.2` 已经是可发布、可试用的 v0.3 基线。对照 `docs/PRD.md` 的 v2.0 目标，剩余工作按功能包计算如下：
+
+| 优先级 | 功能包 | 当前状态 | 说明 |
+|--------|--------|----------|------|
+| P0 | provider/vendor/transport 严格解析 | 部分完成 | `resolve` 已有冲突校验和契约测试，但 provider 选择策略仍需收紧。 |
+| P0 | 平台与二进制前置检查 | 部分完成 | Resolver 层已有 `PLATFORM_UNSUPPORTED` / `BINARY_NOT_FOUND`，run/doctor 路径仍需统一。 |
+| P0 | 错误码闭环 | 部分完成 | JSON envelope 和 resolver 错误较完整；run/strategy/sandbox/config 错误仍需统一。 |
+| P1 | 执行策略增强 | 部分完成 | `single/write_review/write_test_fix/high_quality` 已有；`--strategy`、`--verify`、`--max-iterations`、`--profile` 未完成。 |
+| P1 | 配置覆盖层 | 部分完成 | `registry.override.toml` 已有；`~/.cli-switch/config.yaml`、项目级 `.cli-switch.yaml`、`config show/set/reset` 未完成。 |
+| P1 | 输出校验和自动修复 | 未完成 | 尚无 Capability schema 校验、diff validator、auto repair pipeline。 |
+| P2 | 完整文件沙盒 | 未完成 | 当前只有环境隔离和 gateway HOME 隔离。 |
+| P2 | patch-only 执行 | 未完成 | Agent 仍可直接修改真实工作区。 |
+| P2 | 临时项目副本 | 未完成 | 尚未在 temp copy 内执行 Agent。 |
+| P2 | worktree 隔离 | 未完成 | 尚未支持按任务创建/清理 git worktree。 |
+| P2 | Skill 工作流 | 未完成 | 仅有 Hermes skill 雏形，未实现 `cli-switch skill run` 或 YAML Skill DSL。 |
+
+估算完成度：
+- v0.3 可用基线：约 80%+。
+- PRD v2.0 完整目标：约 45%–55%。
+- 下一轮建议先收口 P0 三项，再进入 P1 配置与输出校验。
+
 ### provider 解析策略收紧
 建议：
 - 当用户显式指定 `provider/vendor/transport` 时，执行严格兼容性校验
