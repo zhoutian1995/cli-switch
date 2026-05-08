@@ -10,6 +10,7 @@ import {
   type GatewayConfig,
   type Tier,
   type TierModelMap,
+  type AgentKeyMap,
   GATEWAY_ENV_KEYS,
   AGENT_ENV_OVERRIDE,
 } from '../../types/gateway.js';
@@ -52,7 +53,21 @@ export function loadGatewayConfig(overrides?: Partial<GatewayConfig>): GatewayCo
 
   const defaultTier: Tier = overrides?.defaultTier ?? 'standard';
 
-  return { apiKey, baseUrl, models, defaultTier };
+  // Per-agent keys: env var SWITCH_AGENT_KEYS is JSON string, e.g. '{"claude-code":"sk-...","codex":"sk-..."}'
+  let agentKeys: AgentKeyMap | undefined;
+  const agentKeysEnv = process.env.SWITCH_AGENT_KEYS;
+  if (agentKeysEnv) {
+    try {
+      agentKeys = JSON.parse(agentKeysEnv) as AgentKeyMap;
+    } catch {
+      // Silently ignore invalid JSON — user can also set via overrides/config
+    }
+  }
+  if (overrides?.agentKeys) {
+    agentKeys = { ...agentKeys, ...overrides.agentKeys };
+  }
+
+  return { apiKey, baseUrl, models, defaultTier, agentKeys };
 }
 
 /**
@@ -69,17 +84,18 @@ export function resolveGateway(
   const model = gateway.models[effectiveTier];
   const agentOverrides = AGENT_ENV_OVERRIDE[agentId] ?? {};
 
+  // Use per-agent key if configured, otherwise fall back to default gateway key
+  const agentKey = gateway.agentKeys?.[agentId] ?? gateway.apiKey;
+
   // Build env: gateway vars + agent-specific native key overrides
   const env: Record<string, string> = {
-    [GATEWAY_ENV_KEYS.apiKey]: gateway.apiKey,
+    [GATEWAY_ENV_KEYS.apiKey]: agentKey,
     [GATEWAY_ENV_KEYS.baseUrl]: gateway.baseUrl,
   };
 
   // Override native API keys so agent routes through gateway
-  for (const [nativeKey, switchEnvKey] of Object.entries(agentOverrides)) {
-    // The switchEnvKey is the env var name that holds the actual value
-    // For agent subprocess, we set the native key = gateway value
-    env[nativeKey] = gateway.apiKey;
+  for (const [nativeKey] of Object.entries(agentOverrides)) {
+    env[nativeKey] = agentKey;
   }
 
   // Also set base URL overrides if agent supports them

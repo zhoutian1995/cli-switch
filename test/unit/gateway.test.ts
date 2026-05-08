@@ -67,6 +67,35 @@ describe('Gateway', () => {
       expect(config!.baseUrl).toBe('https://override-url.com');
       expect(config!.models.economy).toBe('custom-cheap');
     });
+
+    it('loads per-agent keys from SWITCH_AGENT_KEYS env var', () => {
+      process.env.SWITCH_API_KEY = 'default-key';
+      process.env.SWITCH_AGENT_KEYS = '{"claude-code":"anthropic-key","codex":"openai-key"}';
+
+      const config = loadGatewayConfig();
+      expect(config!.agentKeys).toBeDefined();
+      expect(config!.agentKeys!['claude-code']).toBe('anthropic-key');
+      expect(config!.agentKeys!['codex']).toBe('openai-key');
+    });
+
+    it('ignores invalid SWITCH_AGENT_KEYS JSON silently', () => {
+      process.env.SWITCH_API_KEY = 'default-key';
+      process.env.SWITCH_AGENT_KEYS = 'not-json';
+
+      const config = loadGatewayConfig();
+      expect(config!.agentKeys).toBeUndefined();
+    });
+
+    it('merges agent keys overrides over env var', () => {
+      process.env.SWITCH_API_KEY = 'default-key';
+      process.env.SWITCH_AGENT_KEYS = '{"claude-code":"env-claude-key"}';
+
+      const config = loadGatewayConfig({
+        agentKeys: { codex: 'override-codex-key' },
+      });
+      expect(config!.agentKeys!['claude-code']).toBe('env-claude-key');
+      expect(config!.agentKeys!['codex']).toBe('override-codex-key');
+    });
   });
 
   describe('resolveGateway', () => {
@@ -118,6 +147,54 @@ describe('Gateway', () => {
       const result = resolveGateway(partialConfig, 'claude-code', 'economy');
       expect(result.model).toBeUndefined();
       expect(result.reason).toContain('no model mapping');
+    });
+
+    it('uses per-agent key when agentKeys is configured', () => {
+      const configWithKeys: GatewayConfig = {
+        apiKey: 'default-gw-key',
+        baseUrl: 'https://gw.example.com/v1',
+        models: { standard: 'default-model' },
+        defaultTier: 'standard',
+        agentKeys: {
+          'claude-code': 'claude-specific-key',
+          codex: 'codex-specific-key',
+        },
+      };
+
+      const claudeResult = resolveGateway(configWithKeys, 'claude-code', 'standard');
+      expect(claudeResult.env['ANTHROPIC_API_KEY']).toBe('claude-specific-key');
+      expect(claudeResult.env['SWITCH_API_KEY']).toBe('claude-specific-key');
+
+      const codexResult = resolveGateway(configWithKeys, 'codex', 'standard');
+      expect(codexResult.env['OPENAI_API_KEY']).toBe('codex-specific-key');
+      expect(codexResult.env['SWITCH_API_KEY']).toBe('codex-specific-key');
+    });
+
+    it('falls back to default apiKey when agent not in agentKeys', () => {
+      const configWithKeys: GatewayConfig = {
+        apiKey: 'default-gw-key',
+        baseUrl: 'https://gw.example.com/v1',
+        models: { standard: 'default-model' },
+        defaultTier: 'standard',
+        agentKeys: {
+          'claude-code': 'claude-specific-key',
+        },
+      };
+
+      const codexResult = resolveGateway(configWithKeys, 'codex', 'standard');
+      expect(codexResult.env['OPENAI_API_KEY']).toBe('default-gw-key');
+    });
+
+    it('works without agentKeys (backward compat)', () => {
+      const basicConfig: GatewayConfig = {
+        apiKey: 'gw-key',
+        baseUrl: 'https://gw.example.com/v1',
+        models: { standard: 'default-model' },
+        defaultTier: 'standard',
+      };
+
+      const result = resolveGateway(basicConfig, 'claude-code', 'standard');
+      expect(result.env['ANTHROPIC_API_KEY']).toBe('gw-key');
     });
   });
 

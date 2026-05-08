@@ -11,6 +11,9 @@ export type Tier = 'economy' | 'standard' | 'premium';
 /** Tier → actual gateway model ID mapping (user configures per their gateway). */
 export type TierModelMap = Partial<Record<Tier, string>>;
 
+/** AgentId → per-agent API key (for gateways that route by key). */
+export type AgentKeyMap = Partial<Record<string, string>>;
+
 /**
  * Resolved gateway config — ready for use after loading from env/config.
  *
@@ -32,6 +35,12 @@ export interface GatewayConfig {
 
   /** Default tier when none specified. */
   defaultTier: Tier;
+
+  /**
+   * Per-agent API keys (for gateways that route requests by key to different platforms).
+   * Falls back to apiKey when an agent is not listed.
+   */
+  agentKeys?: AgentKeyMap;
 }
 
 /** Environment variable names used by the gateway. */
