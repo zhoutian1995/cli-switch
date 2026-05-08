@@ -133,3 +133,15 @@ export {
   createTempCopy,
   computeCopyDiff,
 } from './temp-copy.js';
+
+export {
+  type WorktreeConfig,
+  type WorktreeContext,
+  type WorktreeChanges,
+  type MergeResult,
+  isGitRepo,
+  createWorktree,
+  getWorktreeChanges,
+  mergeWorktree,
+  removeWorktree,
+} from './worktree.js';

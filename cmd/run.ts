@@ -35,6 +35,7 @@ import {
 } from '../src/core/sandbox/execution-mode.js';
 import { collectPatches, applyPatch } from '../src/core/sandbox/patch-collector.js';
 import { createTempCopy, computeCopyDiff } from '../src/core/sandbox/temp-copy.js';
+import { isGitRepo, createWorktree, getWorktreeChanges, mergeWorktree, removeWorktree } from '../src/core/sandbox/worktree.js';
 import { validateDiffPaths, parseUnifiedDiff } from '../src/core/validation/diff-validator.js';
 
 interface RunOptions {
@@ -55,6 +56,7 @@ interface RunOptions {
   executionMode?: string;
   patchApply?: boolean;
   keepTemp?: boolean;
+  mergeWorktree?: boolean;
 }
 
 export function createRunCommand(): Command {
@@ -79,6 +81,7 @@ export function createRunCommand(): Command {
     .option('--execution-mode <mode>', 'execution mode: default|patch-only|temp-copy|worktree')
     .option('--patch-apply', 'apply collected patches after patch-only execution')
     .option('--keep-temp', 'preserve temporary sandbox files for debugging')
+    .option('--merge-worktree', 'merge worktree branch back after execution')
     .action(async (input: string, options: RunOptions) => {
       const startTime = Date.now();
 
@@ -225,9 +228,6 @@ export function createRunCommand(): Command {
         // Placeholder warnings for modes not yet implemented
         if (executionMode === 'temp-copy') {
           // temp-copy is now implemented — no fallback
-        } else if (executionMode === 'worktree') {
-          console.warn('Warning: worktree execution mode is coming in plan 04-03. Falling back to default.');
-          executionMode = 'default';
         }
 
         const executionModeConfig = getExecutionModeConfig(executionMode);
@@ -632,8 +632,29 @@ async function runSingle(
 ): Promise<void> {
   const isPatchOnly = ctx.executionMode === 'patch-only';
   const isTempCopy = ctx.executionMode === 'temp-copy';
+  const isWorktree = ctx.executionMode === 'worktree';
   const { program, args } = resolveAgentCommand(agentId, input, ctx.effectiveModel);
   const pm = new ProcessManager();
+
+  // Worktree: check git repo and create worktree before execution
+  let worktreeCtx: Awaited<ReturnType<typeof createWorktree>> | null = null;
+  let worktreeBaseDir: string | null = null;
+  if (isWorktree) {
+    worktreeBaseDir = process.cwd();
+    if (!isGitRepo(worktreeBaseDir)) {
+      const msg = `Execution mode 'worktree' requires a git repository. Current directory is not a git repo.`;
+      if (ctx.options.json) {
+        printJson({ ok: false, error: { code: 'WORKTREE_CREATE_FAILED', message: msg }, warnings: ctx.warnings ?? [], diagnostics: [] });
+      } else {
+        console.error(`Error: ${msg}`);
+      }
+      process.exitCode = EXIT_CODES.input;
+      return;
+    }
+    worktreeCtx = await createWorktree(worktreeBaseDir, {
+      force: false,
+    });
+  }
 
   // Temp-copy: create isolated project copy before execution
   let tempCopyCtx: Awaited<ReturnType<typeof createTempCopy>> | null = null;
@@ -652,7 +673,7 @@ async function runSingle(
       bridge.onChunk((chunk) => writer!.writeChunk(chunk));
     }
     await bridge.connect(program, args, {
-      cwd: tempCopyCtx?.copyDir ?? process.cwd(),
+      cwd: worktreeCtx?.worktreeDir ?? tempCopyCtx?.copyDir ?? process.cwd(),
       timeoutMs: ctx.timeoutMs,
     });
     const result = await bridge.sendTask(input);
@@ -684,7 +705,7 @@ async function runSingle(
     timeoutMs: ctx.timeoutMs,
     maxMemoryMb: ctx.maxMemoryMb,
     command: program,
-    cwd: tempCopyCtx?.copyDir,
+    cwd: worktreeCtx?.worktreeDir ?? tempCopyCtx?.copyDir,
     gitGuard: ctx.gitGuard,
     gatewayEnv: ctx.gatewayEnv,
     sandbox: { homeIsolation: Boolean(ctx.gatewayEnv) },
@@ -832,6 +853,72 @@ async function runSingle(
         console.log('  ✓ Diff applied to original directory');
       }
       console.log('');
+    }
+  }
+
+  // Worktree: collect changes, optionally merge, and cleanup
+  if (isWorktree && worktreeCtx && worktreeBaseDir) {
+    try {
+      // Get changes from worktree
+      const changes = await getWorktreeChanges(worktreeBaseDir, worktreeCtx.worktreeDir);
+
+      // Optionally merge worktree branch back
+      let mergeResult: Awaited<ReturnType<typeof mergeWorktree>> | undefined;
+      if (ctx.options.mergeWorktree) {
+        mergeResult = await mergeWorktree(worktreeBaseDir, worktreeCtx.branch);
+        if (!mergeResult.success) {
+          (ctx.warnings ?? []).push(`Worktree merge: ${mergeResult.message}`);
+        }
+      }
+
+      // Augment output with worktree info
+      if (ctx.options.json) {
+        result = {
+          ...result,
+          output: JSON.stringify({
+            output: typeof result.output === 'string' && result.output.startsWith('{')
+              ? JSON.parse(result.output) : result.output,
+            executionMode: 'worktree',
+            worktree: {
+              branch: worktreeCtx.branch,
+              worktreeDir: worktreeCtx.worktreeDir,
+              diffLines: changes.diff.split('\n').length,
+              hasUncommittedChanges: changes.diff.trim().length > 0,
+              newCommits: changes.newCommits.length,
+              commitHash: changes.commitHash,
+              merged: mergeResult?.success ?? false,
+              mergeMessage: mergeResult?.message,
+            },
+          }),
+        };
+      } else {
+        console.log('\n── Worktree Mode ─────────────────');
+        console.log(`  Branch:      ${worktreeCtx.branch}`);
+        console.log(`  Worktree:    ${worktreeCtx.worktreeDir}`);
+        console.log(`  Changes:     ${changes.diff.trim().length > 0 ? 'uncommitted changes present' : 'no uncommitted changes'}`);
+        if (changes.newCommits.length > 0) {
+          console.log(`  Commits:     ${changes.newCommits.length} new commit(s)`);
+          for (const c of changes.newCommits) {
+            console.log(`    • ${c}`);
+          }
+        }
+        if (mergeResult) {
+          console.log(`  Merge:       ${mergeResult.success ? '✓ ' + mergeResult.message : '✗ ' + mergeResult.message}`);
+        } else {
+          console.log(`  Merge:       not requested (use --merge-worktree to merge)`);
+        }
+        console.log('');
+      }
+    } finally {
+      // Always clean up the worktree
+      try {
+        await removeWorktree(worktreeBaseDir, worktreeCtx.worktreeDir, worktreeCtx.branch);
+      } catch {
+        // Best-effort cleanup
+        try {
+          await worktreeCtx.cleanup();
+        } catch { /* give up */ }
+      }
     }
   }
 
