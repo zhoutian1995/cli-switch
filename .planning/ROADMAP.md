@@ -12,7 +12,7 @@ This milestone turns the published v0.3.2 baseline into a tighter v2.0-ready run
 
 - [x] **Phase 1: Runtime Contract Closure** - Finish provider/vendor/transport strictness, preflight checks, and error-code closure.
 - [x] **Phase 2: Configuration Coverage** - Add global/project/task config layering and config commands.
-- [ ] **Phase 3: Output Validation and Repair** - Validate capability outputs and diffs, then add bounded repair.
+- [x] **Phase 3: Output Validation and Repair** - Validate capability outputs and diffs, then add bounded repair.
 - [ ] **Phase 4: Execution Isolation** - Add patch-only, temp project copy, and worktree execution modes.
 - [ ] **Phase 5: Skill Workflow Foundation** - Add local reusable skill definitions and `skill run`.
 
@@ -61,8 +61,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Add capability output schemas and validators.
-- [ ] 03-02: Add diff validation and auto-repair pipeline.
+- [x] 03-01: Add capability output schemas and validators.
+- [x] 03-02: Add diff validation and auto-repair pipeline.
 
 ### Phase 4: Execution Isolation
 **Goal**: Prevent writable agents from directly mutating the real project unless the selected execution mode allows it.
@@ -102,6 +102,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5.
 |-------|----------------|--------|-----------|
 | 1. Runtime Contract Closure | 3/3 | Completed | 2026-05-08 |
 | 2. Configuration Coverage | 3/3 | Completed | 2026-05-08 |
-| 3. Output Validation and Repair | 0/2 | Not started | - |
+| 3. Output Validation and Repair | 2/2 | Completed | 2026-05-08 |
 | 4. Execution Isolation | 0/3 | Not started | - |
 | 5. Skill Workflow Foundation | 0/2 | Not started | - |

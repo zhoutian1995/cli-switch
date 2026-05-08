@@ -57,17 +57,17 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RT-01 | Phase 1 | Pending |
-| RT-02 | Phase 1 | Pending |
-| RT-03 | Phase 1 | Pending |
-| RT-04 | Phase 1 | Pending |
-| CFG-01 | Phase 2 | Pending |
-| CFG-02 | Phase 2 | Pending |
-| CFG-03 | Phase 2 | Pending |
-| CFG-04 | Phase 2 | Pending |
-| OUT-01 | Phase 3 | Pending |
-| OUT-02 | Phase 3 | Pending |
-| OUT-03 | Phase 3 | Pending |
+| RT-01 | Phase 1 | Done |
+| RT-02 | Phase 1 | Done |
+| RT-03 | Phase 1 | Done |
+| RT-04 | Phase 1 | Done |
+| CFG-01 | Phase 2 | Done |
+| CFG-02 | Phase 2 | Done |
+| CFG-03 | Phase 2 | Done |
+| CFG-04 | Phase 2 | Done |
+| OUT-01 | Phase 3 | Done |
+| OUT-02 | Phase 3 | Done |
+| OUT-03 | Phase 3 | Done |
 | ISO-01 | Phase 4 | Pending |
 | ISO-02 | Phase 4 | Pending |
 | ISO-03 | Phase 4 | Pending |
