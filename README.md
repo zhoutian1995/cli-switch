@@ -12,7 +12,7 @@ routes a task to the right agent, injects gateway credentials, chooses model
 tiers, isolates the child process environment, and returns text or JSON output
 that scripts and higher-level agents can consume.
 
-Current public package: `cli-switch@0.3.2`
+Current release: `cli-switch@1.0.0`
 
 ## Languages
 
@@ -53,6 +53,8 @@ need one stable interface for multiple coding agents.
 - Dispatch review, test-writing, refactor, explain, analysis, and fix tasks.
 - Keep parent session variables out of child agent processes.
 - Inspect local agent readiness with diagnostics and auth checks.
+- Define reusable skill workflows with prompt templates.
+- Run agents in isolated worktrees or temp copies without touching the real project.
 
 ### Good Fit
 
@@ -63,22 +65,32 @@ need one stable interface for multiple coding agents.
 | Agent framework integration | Use `--json`, `--dry-run`, and stable command surfaces. |
 | Cost and quality routing | Route by `economy`, `standard`, or `premium` model tiers. |
 | CI-style diagnostics | Check env, auth, models, providers, and runtime specs from scripts. |
+| Execution isolation | Run agents in worktrees or temp copies to protect the real project. |
+| Skill automation | Define reusable task templates with `skill run <name>`. |
 
 ### Current Status
 
-`cli-switch@0.3.2` is a usable early release. It is ready for practical testing
-and internal workflows, but it is not the full v2.0 roadmap product yet.
+`cli-switch@1.0.0` — all 5 roadmap phases complete. 51 test files, 640 tests
+passing.
 
-Implemented today:
+Implemented:
 
 - `cli-switch run <task>` with smart routing.
 - Agent override with `--agent claude-code|codex`.
-- Execution modes: `single`, `write_review`, `write_test_fix`.
+- Execution modes: `single`, `write_review`, `write_test_fix`, `patch-only`,
+  `temp-copy`, `worktree`.
 - Tier routing: `economy`, `standard`, `premium`.
 - Gateway aliases: `SWITCH_*`, `SWITCH_RELAY_*`, `OPENROUTER_*`.
+- Config layering: global `~/.cli-switch/config.yaml` + project
+  `.cli-switch.yaml` + CLI flags (CLI > project > global > env).
+- Config commands: `config show/set/reset` with dot-path keys, type coercion,
+  `--project`/`--global` scope, `--json` output.
+- Output validation schemas and diff validation with bounded auto-repair.
+- Execution isolation: patch-only mode, temp project copies, git worktrees.
+- Skill definitions: local `.cli-switch/skills/` and `~/.cli-switch/skills/`
+  with `skill list/show/run` commands.
 - JSON output for automation.
 - Diagnostics: `resolve`, `env`, `auth status`, `doctor`, `list`.
-- Capability matrix and benchmark simulation commands.
 - Process environment isolation and gateway HOME isolation.
 - Full TypeScript build and automated test suite.
 
@@ -87,9 +99,6 @@ Known limits:
 - `--strategy balanced|high_quality|low_cost` is accepted but not implemented
   as a runtime cost strategy selector yet.
 - Gateway injection currently targets Claude Code and Codex.
-- Sandbox support is environment-level in v0.3.0. Full file policy, patch-only
-  execution, temporary project copies, and worktree isolation are future work.
-- `config show/set/reset` commands are not implemented yet.
 
 ### Install
 
@@ -135,22 +144,11 @@ cli-switch run "fix this TypeScript error" --agent codex
 cli-switch run "review this architecture change" --agent claude-code
 ```
 
-Use JSON output:
-
-```bash
-cli-switch run "explain this repository" --json
-```
-
-Use a model tier:
-
-```bash
-cli-switch run "debug the failing e2e test" --tier premium
-```
-
 Use an execution mode:
 
 ```bash
 cli-switch run "implement login validation" --execution write_test_fix
+cli-switch run "refactor safely" --execution worktree
 ```
 
 ### Gateway And Relay Configuration
@@ -192,19 +190,44 @@ When gateway mode is enabled:
 | Claude Code | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` | `--model` |
 | Codex CLI | `OPENAI_API_KEY`, `OPENAI_BASE_URL` | `-m` |
 
-If no gateway key is configured, the agent uses its native local auth.
+### Config Files
+
+Global config: `~/.cli-switch/config.yaml`
+
+```bash
+cli-switch config set gateway.base_url https://your-relay.example.com/v1
+cli-switch config set gateway.api_key your-key
+cli-switch config set gateway.models.economy your-economy-model
+cli-switch config set gateway.default_tier standard
+cli-switch config show --json
+```
+
+Project config: `.cli-switch.yaml` (per-repository, overrides global)
+
+```bash
+cli-switch config set --project gateway.default_tier premium
+cli-switch config show
+```
+
+Config priority: CLI flags > project config > global config > env vars.
 
 ### Commands
 
 ```bash
-cli-switch resolve       # Resolve tool/profile/model to a runtime spec
-cli-switch env           # Inspect environment and config sources
-cli-switch auth status   # Check auth status for a tool
-cli-switch doctor        # Run diagnostics
-cli-switch list          # List models, providers, and profiles
-cli-switch run           # Route and run an AI agent
-cli-switch capabilities  # Show the capability matrix
-cli-switch benchmark     # Run capability simulations across agents
+cli-switch resolve         # Resolve tool/profile/model to a runtime spec
+cli-switch env             # Inspect environment and config sources
+cli-switch auth status     # Check auth status for a tool
+cli-switch doctor          # Run diagnostics
+cli-switch list            # List models, providers, and profiles
+cli-switch run             # Route and run an AI agent
+cli-switch config show     # Show merged config
+cli-switch config set      # Set a config value (dot-path)
+cli-switch config reset    # Reset a config value
+cli-switch skill list      # List available skills
+cli-switch skill show      # Show skill details
+cli-switch skill run       # Run a skill by name
+cli-switch capabilities    # Show the capability matrix
+cli-switch benchmark       # Run capability simulations across agents
 ```
 
 Current `run` options:
@@ -212,8 +235,7 @@ Current `run` options:
 ```text
 --mode <mode>        single|orchestrator|handoff|review
 --agent <agent>      claude-code|codex
---strategy <name>    balanced|high_quality|low_cost (accepted, not implemented)
---execution <mode>   single|write_review|write_test_fix
+--execution <mode>   single|write_review|write_test_fix|patch_only|temp_copy|worktree
 --tier <tier>        economy|standard|premium
 --json               output JSON
 --dry-run            show routing decision without executing
@@ -222,20 +244,8 @@ Current `run` options:
 --no-git             skip Git guard
 --rollback           try rollback on failure
 --stream             stream output, default true
---no-stream          disable streaming
 --interactive        interactive agent selection
 --acp                JSON-RPC over stdio bridge
-```
-
-### Start Curve
-
-```mermaid
-flowchart LR
-  A["5 min\nInstall + doctor"] --> B["10 min\nDry-run routing"]
-  B --> C["20 min\nRun one agent task"]
-  C --> D["30 min\nConfigure gateway"]
-  D --> E["60 min\nUse JSON in scripts"]
-  E --> F["1 day\nIntegrate into agent workflows"]
 ```
 
 ### Architecture
@@ -247,6 +257,9 @@ src/core/gateway/     gateway config and env injection
 src/core/dispatcher/  agent process management
 src/core/sandbox/     environment and HOME isolation helpers
 src/core/strategy/    execution mode engine
+src/core/config/      config schema, loader, and precedence
+src/core/validation/  output validation and repair pipeline
+src/core/skill/       skill definitions, loader, and runner
 src/registry/         built-in agents, models, providers, profiles
 schema/               runtime and config JSON schemas
 test/                 unit, contract, e2e, and stress tests
@@ -264,18 +277,19 @@ npm run lint
 Verification baseline:
 
 ```text
-35 test files
-318 tests passing
+51 test files
+640 tests passing
 ```
 
-### Roadmap
+### Roadmap — Complete ✅
 
-- Short term: stricter provider/vendor/transport resolution, platform and
-  binary preflight checks, error-code closure, user config overrides.
-- Mid term: richer execution policy, better strategy controls, stronger output
-  validation.
-- Later: full file sandboxing, patch-only execution, temporary project copies,
-  worktree isolation, and richer skill workflows.
+All 5 planned phases delivered:
+
+1. **Runtime Contract Closure** — resolver strictness, platform/binary preflight, error-code inventory.
+2. **Configuration Coverage** — global/project config layering, `config show/set/reset`.
+3. **Output Validation and Repair** — capability schemas, diff validation, bounded auto-repair.
+4. **Execution Isolation** — patch-only, temp project copy, git worktree modes.
+5. **Skill Workflow Foundation** — local skill definitions, `skill run`.
 
 ---
 
@@ -296,8 +310,8 @@ Verification baseline:
   -> 文本或 JSON 结果
 ```
 
-核心目标是让上层 Agent、自动化脚本或开发者不再直接关心“这个任务到底该用哪个
-Agent、哪个模型、哪个 API Key、哪个命令参数”。你只描述任务，`cli-switch` 负责
+核心目标是让上层 Agent、自动化脚本或开发者不再直接关心"这个任务到底该用哪个
+Agent、哪个模型、哪个 API Key、哪个命令参数"。你只描述任务，`cli-switch` 负责
 把任务路由到合适的执行器。
 
 ### 为什么要做
@@ -311,7 +325,7 @@ AI 编程工具越来越多，但它们的调用方式并不统一：
 - 上层 Agent 需要稳定 JSON 输出，而不是解析各个 CLI 的非结构化终端输出。
 - 直接让子进程继承用户全局 HOME 和会话变量，容易产生配置污染和不可重复行为。
 
-`cli-switch` 解决的是“多 Agent 能力调用标准化”的问题：把不同 CLI 包装成统一能力，
+`cli-switch` 解决的是"多 Agent 能力调用标准化"的问题：把不同 CLI 包装成统一能力，
 让系统根据任务自动选择 Agent、模型档位和执行策略。
 
 ### 它能做什么
@@ -319,50 +333,27 @@ AI 编程工具越来越多，但它们的调用方式并不统一：
 - 在 Claude Code 和 Codex CLI 之间进行任务路由。
 - 使用 `--agent` 强制指定某个 Agent。
 - 使用 `--tier economy|standard|premium` 表达成本/质量档位。
-- 使用 `--execution single|write_review|write_test_fix` 表达执行流程。
+- 使用 `--execution single|write_review|write_test_fix|patch_only|temp_copy|worktree`
+  表达执行流程。
 - 把自建中转站或 OpenRouter 兼容 Key 注入为 Claude/Codex 需要的原生环境变量。
 - 用 `--dry-run` 查看路由决策，避免盲目消耗模型调用。
 - 用 `--json` 接入脚本、CI、上层 Agent 或自动化系统。
-- 用 `doctor`、`env`、`auth status`、`resolve` 检查本地环境和运行时配置。
-- 隔离子进程环境，清理父进程会话变量，并在 gateway 场景使用临时 HOME。
-
-### 适用场景
-
-| 场景 | cli-switch 的作用 |
-| --- | --- |
-| 多 Agent 编程工作流 | 按任务选择 Claude Code 或 Codex，而不是把流程写死到一个工具上。 |
-| 自建 LLM 中转站 | 把 `SWITCH_API_KEY` / `SWITCH_RELAY_API_KEY` 自动映射到 Agent 原生变量。 |
-| OpenRouter 兼容网关 | 复用 `OPENROUTER_API_KEY` / `OPENROUTER_BASE_URL`。 |
-| Hermes / OpenClaw 等上层 Agent | 提供稳定 CLI 和 JSON 输出，方便作为底层能力调用。 |
-| 自动化脚本和 CI | 先诊断环境，再执行任务，并以结构化结果回传。 |
-| 成本与质量分层 | 用 `economy`、`standard`、`premium` 表达模型档位，而不是到处写死模型名。 |
+- 全局配置 `~/.cli-switch/config.yaml` + 项目配置 `.cli-switch.yaml` 多层覆盖。
+- `config show/set/reset` 命令管理配置，支持 dot-path、类型自动转换、`--project`/`--global`。
+- 输出校验与自动修复 pipeline，包含能力输出 schema 和 diff 校验。
+- Patch-only、临时项目副本、git worktree 三种隔离执行模式。
+- 本地 Skill 定义 + `skill list/show/run` 可复用工作流。
+- 隔离子进程环境，清理父进程会话变量。
 
 ### 当前状态
 
-`cli-switch@0.3.2` 已发布到 npm，可以用于早期真实工作流和内部自动化验证。
-它已经是可运行的 v0.3.x 基线，但还不是 PRD 中完整的 v2.0 产品形态。
-
-当前已实现：
-
-- `cli-switch run <任务>` 智能路由执行。
-- `--agent claude-code|codex` 指定执行器。
-- `--tier economy|standard|premium` 模型档位。
-- `--execution single|write_review|write_test_fix` 执行模式。
-- `SWITCH_*`、`SWITCH_RELAY_*`、`OPENROUTER_*` Gateway 环境变量。
-- JSON 输出。
-- `resolve`、`env`、`auth status`、`doctor`、`list` 等诊断命令。
-- 能力矩阵和 benchmark simulation 命令。
-- 子进程环境隔离和 gateway HOME 隔离。
-- TypeScript 构建与自动化测试。
+`cli-switch@1.0.0` — 5 个路线图阶段全部完成。51 个测试文件，640 个测试通过。
 
 当前边界：
 
 - `--strategy balanced|high_quality|low_cost` 目前会被接受并提示 warning，但还没有真正
   作为运行时成本策略生效。
 - Gateway 注入当前主要面向 Claude Code 和 Codex。
-- 沙盒是 v0.1 范围：环境隔离 + gateway HOME 隔离。完整文件系统白名单、patch-only
-  输出、临时项目副本、worktree 隔离仍是后续目标。
-- `config show/set/reset` 还没有实现。
 
 ### 安装与快速开始
 
@@ -388,18 +379,34 @@ cli-switch run "给 payment parser 写测试"
 
 ```bash
 cli-switch run "修复这个 TypeScript 错误" --agent codex
-cli-switch run "审查这个架构改动" --agent claude-code
 ```
 
-输出 JSON：
+隔离执行：
 
 ```bash
-cli-switch run "解释这个仓库" --json
+cli-switch run "重构这个模块" --execution worktree
 ```
 
-### 中转站 / Gateway 配置
+### 配置文件
 
-推荐显式使用 `SWITCH_*`：
+全局配置 `~/.cli-switch/config.yaml`：
+
+```bash
+cli-switch config set gateway.base_url https://your-relay.example.com/v1
+cli-switch config set gateway.api_key your-key
+cli-switch config set gateway.models.economy your-economy-model
+cli-switch config show --json
+```
+
+项目配置 `.cli-switch.yaml`（每个仓库独立，覆盖全局）：
+
+```bash
+cli-switch config set --project gateway.default_tier premium
+```
+
+优先级：CLI 参数 > 项目配置 > 全局配置 > 环境变量。
+
+### 中转站 / Gateway 配置
 
 ```bash
 export SWITCH_API_KEY=your-gateway-key
@@ -409,42 +416,19 @@ export SWITCH_MODEL_STANDARD=your-standard-model
 export SWITCH_MODEL_PREMIUM=your-premium-model
 ```
 
-自建中转站别名：
-
-```bash
-export SWITCH_RELAY_API_KEY=your-relay-key
-export SWITCH_RELAY_BASE_URL=https://your-relay.example.com/v1
-```
-
-OpenRouter 兼容变量：
-
-```bash
-export OPENROUTER_API_KEY=sk-or-v1-xxx
-export OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-```
-
 优先级：
 
 ```text
 SWITCH_* > SWITCH_RELAY_* > OPENROUTER_*
 ```
 
-### 上手曲线
+### 路线图 — 全部完成 ✅
 
-```mermaid
-flowchart LR
-  A["5 分钟\n安装 + doctor"] --> B["10 分钟\n--dry-run 看路由"]
-  B --> C["20 分钟\n跑一次真实 Agent 任务"]
-  C --> D["30 分钟\n配置 Gateway / 中转站"]
-  D --> E["60 分钟\n用 --json 接入脚本"]
-  E --> F["1 天\n接入上层 Agent 工作流"]
-```
-
-### 路线图
-
-- 短期：收紧 provider/vendor/transport 解析、平台与二进制前置检查、错误码闭环。
-- 中期：增强执行策略、配置覆盖层、输出校验和自动修复。
-- 后续：完整文件沙盒、patch-only 执行、临时项目副本、worktree 隔离和更完整的 Skill 工作流。
+1. **Runtime Contract Closure** — 解析收紧、平台/二进制前置检查、错误码闭环。
+2. **Configuration Coverage** — 全局/项目配置分层、`config show/set/reset`。
+3. **Output Validation and Repair** — 能力输出 schema、diff 校验、有界自动修复。
+4. **Execution Isolation** — patch-only、临时项目副本、git worktree 隔离。
+5. **Skill Workflow Foundation** — 本地 Skill 定义、`skill run`。
 
 ---
 
@@ -477,116 +461,37 @@ AI コーディング CLI は強力ですが、実運用では次の問題があ
 - 自前の LLM relay や OpenRouter 互換 Gateway を使う場合、同じ Key を各 CLI の
   ネイティブ環境変数へ変換する必要がある。
 - 上位 Agent や CI では、端末向けの非構造化出力より安定した JSON が必要。
-- 親プロセスのセッション変数や HOME 配下の設定をそのまま引き継ぐと、再現性と安全性が落ちる。
 
 `cli-switch` はこれらを「Capability Routing」という形で標準化します。
-ユーザーはタスクを渡し、システムが Agent、モデル Tier、実行モードを選びます。
-
-### What You Can Do / できること
-
-- Claude Code と Codex CLI の間でタスクをルーティングする。
-- `--agent` で Agent を明示的に指定する。
-- `--tier economy|standard|premium` でコストと品質のバランスを指定する。
-- `--execution single|write_review|write_test_fix` で実行フローを指定する。
-- 自前 Gateway / OpenRouter 互換 Key を Agent ネイティブ環境変数へ注入する。
-- `--dry-run` で実行前にルーティング判断を確認する。
-- `--json` でスクリプトや上位 Agent に接続する。
-- `doctor`、`env`、`auth status`、`resolve` で環境と設定を診断する。
-
-### Use Cases / 利用シーン
-
-| シーン | 役立つ理由 |
-| --- | --- |
-| 複数 Agent の開発ワークフロー | Claude Code と Codex をタスクごとに切り替えられる。 |
-| 自前 LLM relay | 1 つの Gateway Key を各 Agent の形式へ自動変換できる。 |
-| OpenRouter 互換 Gateway | `OPENROUTER_API_KEY` をそのまま再利用できる。 |
-| Agent フレームワーク連携 | 安定した CLI と JSON 出力を下位 Capability として使える。 |
-| CI / 自動化 | 診断、ルーティング、実行結果をスクリプトで扱いやすい。 |
 
 ### Current Status / 現在の状態
 
-`cli-switch@0.3.2` は npm で公開済みの早期リリースです。実用テストや社内
-ワークフローには利用できますが、PRD にある v2.0 の全機能はまだ実装されていません。
+`cli-switch@1.0.0` — 5 つのロードマップフェーズすべて完了。51 テストファイル、
+640 テスト通過。
 
-実装済み：
+実装済み機能：
 
-- `cli-switch run <task>` によるスマートルーティング。
-- `--agent claude-code|codex`。
-- `--tier economy|standard|premium`。
-- `--execution single|write_review|write_test_fix`。
-- `SWITCH_*`、`SWITCH_RELAY_*`、`OPENROUTER_*` の Gateway 変数。
-- JSON 出力。
-- `resolve`、`env`、`auth status`、`doctor`、`list`。
-- Capability matrix と benchmark simulation。
-- 子プロセス環境の分離と Gateway 利用時の HOME 分離。
+- `cli-switch run` スマートルーティング。
+- `--agent`, `--tier`, `--execution` フラグ。
+- 6 つの実行モード：`single`, `write_review`, `write_test_fix`,
+  `patch_only`, `temp_copy`, `worktree`。
+- グローバル + プロジェクト設定レイヤー、`config show/set/reset`。
+- 出力バリデーション + diff 自動修復。
+- ローカル Skill 定義 + `skill list/show/run`。
+- 子プロセス環境分離。
 
 制限：
 
-- `--strategy balanced|high_quality|low_cost` は受け付けますが、実際の runtime cost
-  strategy としてはまだ動作しません。
-- Gateway 注入の主対象は Claude Code と Codex です。
-- Sandbox は現時点では環境レベルです。完全な file policy、patch-only 実行、
-  temporary project copy、worktree isolation は今後の作業です。
-- `config show/set/reset` は未実装です。
+- `--strategy` は受け付けますが、実行時コスト戦略としては未実装。
+- Gateway 注入の主対象は Claude Code と Codex。
 
-### Quick Start / クイックスタート
+### Roadmap / ロードマップ — 完了 ✅
 
-```bash
-npm install -g cli-switch
-cli-switch --version
-cli-switch doctor --json
-```
-
-```bash
-cli-switch run "refactor the auth module" --dry-run
-cli-switch run "write tests for the payment parser"
-cli-switch run "fix this TypeScript error" --agent codex
-cli-switch run "review this architecture change" --agent claude-code
-cli-switch run "explain this repository" --json
-```
-
-### Gateway 設定
-
-```bash
-export SWITCH_API_KEY=your-gateway-key
-export SWITCH_BASE_URL=https://your-relay.example.com/v1
-export SWITCH_MODEL_ECONOMY=your-economy-model
-export SWITCH_MODEL_STANDARD=your-standard-model
-export SWITCH_MODEL_PREMIUM=your-premium-model
-```
-
-```bash
-export SWITCH_RELAY_API_KEY=your-relay-key
-export SWITCH_RELAY_BASE_URL=https://your-relay.example.com/v1
-```
-
-```bash
-export OPENROUTER_API_KEY=sk-or-v1-xxx
-export OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-```
-
-優先順位：
-
-```text
-SWITCH_* > SWITCH_RELAY_* > OPENROUTER_*
-```
-
-### Start Curve / 導入ステップ
-
-```mermaid
-flowchart LR
-  A["5 min\nInstall + doctor"] --> B["10 min\nDry-run routing"]
-  B --> C["20 min\nRun one agent task"]
-  C --> D["30 min\nConfigure gateway"]
-  D --> E["60 min\nUse JSON in scripts"]
-  E --> F["1 day\nIntegrate into agent workflows"]
-```
-
-### Roadmap / ロードマップ
-
-- Short term: provider/vendor/transport の厳密化、platform/binary preflight checks、error-code closure。
-- Mid term: execution policy、strategy controls、output validation の強化。
-- Later: full file sandboxing、patch-only execution、temporary project copies、worktree isolation。
+1. **Runtime Contract Closure** — resolver 厳密化、preflight checks、error-code closure。
+2. **Configuration Coverage** — グローバル/プロジェクト設定、`config show/set/reset`。
+3. **Output Validation and Repair** — capability schema、diff validation、bounded repair。
+4. **Execution Isolation** — patch-only、temp copy、worktree モード。
+5. **Skill Workflow Foundation** — ローカル Skill 定義、`skill run`。
 
 ---
 
@@ -610,233 +515,33 @@ Codex CLI를 대체하는 도구가 아니라, 여러 코딩 Agent 위에서 하
 개발자, 자동화 스크립트, 상위 Agent 프레임워크가 여러 AI 코딩 CLI를 일관된 방식으로
 호출할 수 있게 만드는 것이 목표입니다.
 
-### Why / 왜 필요한가
-
-AI 코딩 CLI는 각각 강력하지만 실제 워크플로에서는 다음 문제가 생깁니다.
-
-- 도구마다 인증 방식, 환경 변수, 모델 플래그가 다르다.
-- Agent마다 잘하는 일이 다르므로 작업별 선택이 필요하다.
-- 자체 LLM relay나 OpenRouter 호환 Gateway를 쓰면 같은 Key를 각 CLI의 네이티브
-  환경 변수로 매핑해야 한다.
-- 상위 Agent와 자동화 스크립트는 사람이 보는 터미널 출력보다 안정적인 JSON이 필요하다.
-- 부모 프로세스의 세션 변수와 HOME 설정을 그대로 넘기면 재현성과 격리가 약해진다.
-
-`cli-switch`는 이 문제를 Capability Routing으로 정리합니다. 사용자는 작업을 전달하고,
-시스템이 Agent, 모델 Tier, 실행 모드를 선택합니다.
-
-### What You Can Do / 할 수 있는 일
-
-- Claude Code와 Codex CLI 사이에서 작업을 라우팅한다.
-- `--agent`로 특정 Agent를 강제한다.
-- `--tier economy|standard|premium`으로 비용과 품질 수준을 표현한다.
-- `--execution single|write_review|write_test_fix`로 실행 흐름을 지정한다.
-- 자체 Gateway 또는 OpenRouter 호환 Key를 Agent 네이티브 환경 변수로 주입한다.
-- `--dry-run`으로 실행 전에 라우팅 결정을 확인한다.
-- `--json`으로 스크립트, CI, 상위 Agent에 연결한다.
-- `doctor`, `env`, `auth status`, `resolve`로 로컬 환경과 인증 상태를 점검한다.
-
-### Use Cases / 사용 시나리오
-
-| 시나리오 | 도움이 되는 이유 |
-| --- | --- |
-| 멀티 Agent 코딩 워크플로 | Claude Code와 Codex를 작업별로 선택할 수 있다. |
-| 자체 LLM relay | 하나의 Gateway Key를 각 Agent 형식으로 자동 매핑한다. |
-| OpenRouter 호환 Gateway | `OPENROUTER_API_KEY`와 `OPENROUTER_BASE_URL`을 재사용한다. |
-| Agent 프레임워크 통합 | 안정적인 CLI와 JSON 출력을 하위 Capability로 사용할 수 있다. |
-| 자동화 / CI | 진단, 라우팅, 실행 결과를 스크립트에서 다루기 쉽다. |
-
 ### Current Status / 현재 상태
 
-`cli-switch@0.3.2`는 npm에 공개된 초기 사용 가능 버전입니다. 실제 내부 워크플로와
-테스트에는 사용할 수 있지만, PRD의 전체 v2.0 기능이 모두 구현된 것은 아닙니다.
+`cli-switch@1.0.0` — 5개 로드맵 단계 모두 완료. 51 테스트 파일, 640 테스트 통과.
 
-현재 구현됨:
+구현된 기능:
 
-- `cli-switch run <task>` 스마트 라우팅.
-- `--agent claude-code|codex`.
-- `--tier economy|standard|premium`.
-- `--execution single|write_review|write_test_fix`.
-- `SWITCH_*`, `SWITCH_RELAY_*`, `OPENROUTER_*` Gateway 변수.
-- JSON 출력.
-- `resolve`, `env`, `auth status`, `doctor`, `list`.
-- Capability matrix와 benchmark simulation.
-- 자식 프로세스 환경 격리와 Gateway HOME 격리.
+- `cli-switch run` 스마트 라우팅.
+- `--agent`, `--tier`, `--execution` 플래그.
+- 6개 실행 모드: `single`, `write_review`, `write_test_fix`,
+  `patch_only`, `temp_copy`, `worktree`.
+- 글로벌 + 프로젝트 설정 레이어, `config show/set/reset`.
+- 출력 검증 + diff 자동 복구.
+- 로컬 Skill 정의 + `skill list/show/run`.
+- 자식 프로세스 환경 격리.
 
 제한:
 
-- `--strategy balanced|high_quality|low_cost`는 옵션으로 받지만 실제 runtime cost
-  strategy로는 아직 동작하지 않는다.
-- Gateway 주입은 현재 Claude Code와 Codex가 주요 대상이다.
-- Sandbox는 현재 환경 격리 수준이다. full file policy, patch-only execution,
-  temporary project copy, worktree isolation은 이후 작업이다.
-- `config show/set/reset`은 아직 없다.
+- `--strategy`는 옵션으로 받지만 실제 runtime cost strategy로는 아직 동작하지 않음.
+- Gateway 주입은 현재 Claude Code와 Codex가 주요 대상.
 
-### Quick Start / 빠른 시작
+### Roadmap / 로드맵 — 완료 ✅
 
-```bash
-npm install -g cli-switch
-cli-switch --version
-cli-switch doctor --json
-```
-
-```bash
-cli-switch run "refactor the auth module" --dry-run
-cli-switch run "write tests for the payment parser"
-cli-switch run "fix this TypeScript error" --agent codex
-cli-switch run "review this architecture change" --agent claude-code
-cli-switch run "explain this repository" --json
-```
-
-### Gateway 설정
-
-```bash
-export SWITCH_API_KEY=your-gateway-key
-export SWITCH_BASE_URL=https://your-relay.example.com/v1
-export SWITCH_MODEL_ECONOMY=your-economy-model
-export SWITCH_MODEL_STANDARD=your-standard-model
-export SWITCH_MODEL_PREMIUM=your-premium-model
-```
-
-```bash
-export SWITCH_RELAY_API_KEY=your-relay-key
-export SWITCH_RELAY_BASE_URL=https://your-relay.example.com/v1
-```
-
-```bash
-export OPENROUTER_API_KEY=sk-or-v1-xxx
-export OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-```
-
-우선순위:
-
-```text
-SWITCH_* > SWITCH_RELAY_* > OPENROUTER_*
-```
-
-### Start Curve / 시작 곡선
-
-```mermaid
-flowchart LR
-  A["5 min\nInstall + doctor"] --> B["10 min\nDry-run routing"]
-  B --> C["20 min\nRun one agent task"]
-  C --> D["30 min\nConfigure gateway"]
-  D --> E["60 min\nUse JSON in scripts"]
-  E --> F["1 day\nIntegrate into agent workflows"]
-```
-
-### Roadmap / 로드맵
-
-- Short term: provider/vendor/transport 해석 강화, platform/binary preflight checks, error-code closure.
-- Mid term: execution policy, strategy controls, output validation 강화.
-- Later: full file sandboxing, patch-only execution, temporary project copies, worktree isolation.
-
----
-
-## License
-
-MIT
-
-### 适用场景
-
-- 你同时使用 Claude Code 和 Codex，希望按任务自动选择。
-- 你有自建中转站，希望一套 API Key 映射到不同 Agent。
-- 你在做 Hermes、OpenClaw 或其他 Agent 工作流，需要稳定 CLI 接口。
-- 你希望先 `--dry-run` 看路由决策，再真正执行。
-- 你希望用 `--json` 把 AI 编程能力接入自动化脚本。
-- 你希望避免 Claude/Codex 子进程读取父进程会话变量或全局配置污染任务。
-
-### 当前能力
-
-- 已发布 npm 包：`cli-switch@0.3.2`。
-- 支持 `cli-switch run <任务>`。
-- 支持 `--agent claude-code|codex`。
-- 支持 `--tier economy|standard|premium`。
-- 支持 `--execution single|write_review|write_test_fix`。
-- 支持 `SWITCH_*`、`SWITCH_RELAY_*`、`OPENROUTER_*` 环境变量。
-- 支持 `resolve`、`env`、`auth status`、`doctor`、`list` 等诊断命令。
-- 支持基础沙盒：环境变量隔离、gateway 场景临时 HOME 隔离。
-
-### 边界说明
-
-当前版本是 v0.3.0 可用基线，不是完整 v2.0。完整文件系统沙盒、patch-only
-输出、worktree 隔离、配置管理命令和真正的 `--strategy` 成本策略仍在后续路线图。
-
-### 快速开始
-
-```bash
-npm install -g cli-switch
-cli-switch doctor --json
-cli-switch run "帮我重构 auth 模块" --dry-run
-cli-switch run "给 payment parser 写测试" --agent codex
-```
-
----
-
-## 日本語
-
-### 概要
-
-`cli-switch` は、AI コーディング CLI のための Agent Capability Router です。
-Claude Code や Codex CLI を置き換えるものではなく、その上に薄い実行レイヤーを
-追加し、タスクの意図判定、Agent 選択、ゲートウェイ認証情報の注入、モデル
-Tier の選択、子プロセス環境の分離を行います。
-
-### 利用シーン
-
-- Claude Code と Codex CLI をタスクごとに使い分けたい。
-- 自前の LLM リレーや OpenRouter 互換 Gateway を使いたい。
-- 上位 Agent や自動化スクリプトから安定した CLI/JSON インターフェースを使いたい。
-- 実行前に `--dry-run` でルーティング結果を確認したい。
-- `economy`、`standard`、`premium` のようなモデル Tier でコストと品質を調整したい。
-
-### 現在の状態
-
-`cli-switch@0.3.2` は npm で公開済みの早期リリースです。実用テストや内部
-ワークフローには利用できますが、v2.0 ロードマップの全機能はまだ実装されて
-いません。
-
-### クイックスタート
-
-```bash
-npm install -g cli-switch
-cli-switch doctor --json
-cli-switch run "refactor the auth module" --dry-run
-cli-switch run "write tests for the payment parser" --agent codex
-```
-
----
-
-## 한국어
-
-### 개요
-
-`cli-switch`는 AI 코딩 CLI를 위한 Agent Capability Router입니다. Claude Code나
-Codex CLI를 대체하는 도구가 아니라, 그 위에서 작업 의도 분석, Agent 선택,
-Gateway 인증 정보 주입, 모델 Tier 선택, 자식 프로세스 환경 격리를 제공하는
-오케스트레이션 레이어입니다.
-
-### 사용하기 좋은 경우
-
-- Claude Code와 Codex CLI를 작업별로 자동 선택하고 싶을 때.
-- 자체 LLM relay 또는 OpenRouter 호환 Gateway를 사용하고 싶을 때.
-- 상위 Agent 프레임워크나 자동화 스크립트에서 안정적인 CLI/JSON 출력을 원할 때.
-- 실행 전에 `--dry-run`으로 라우팅 결정을 확인하고 싶을 때.
-- `economy`, `standard`, `premium` Tier로 비용과 품질을 조정하고 싶을 때.
-
-### 현재 상태
-
-`cli-switch@0.3.2`은 npm에 공개된 초기 사용 가능 버전입니다. 내부 워크플로와
-실사용 테스트에는 사용할 수 있지만, PRD의 전체 v2.0 기능이 모두 구현된 것은
-아닙니다.
-
-### 빠른 시작
-
-```bash
-npm install -g cli-switch
-cli-switch doctor --json
-cli-switch run "refactor the auth module" --dry-run
-cli-switch run "write tests for the payment parser" --agent codex
-```
+1. **Runtime Contract Closure** — resolver 엄격화, preflight checks, error-code closure.
+2. **Configuration Coverage** — 글로벌/프로젝트 설정, `config show/set/reset`.
+3. **Output Validation and Repair** — capability schema, diff validation, bounded repair.
+4. **Execution Isolation** — patch-only, temp copy, worktree 모드.
+5. **Skill Workflow Foundation** — 로컬 Skill 정의, `skill run`.
 
 ---
 

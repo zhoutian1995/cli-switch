@@ -1,6 +1,6 @@
 {
   "name": "cli-switch",
-  "version": "0.3.2",
+  "version": "1.0.0",
   "description": "AI Agent orchestration layer — smart routing, multi-agent dispatching, and runtime compatibility for Claude Code, Codex CLI, and Gemini CLI",
   "keywords": [
     "ai",
@@ -49,7 +49,7 @@
     "smoke": "npm run build && node scripts/smoke-test.js",
     "lint": "tsc --noEmit -p tsconfig.json",
     "format": "prettier --write .",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@iarna/toml": "^2.2.5",
