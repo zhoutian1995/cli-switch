@@ -22,7 +22,7 @@
 
 ## Verification
 - tsc / lint / build: ✅
-- 38 test files, 381 passed, 1 failed (Hermes env), 1 skipped
+- 51 test files, 640 passed, 1 failed (Hermes env — pre-existing), 1 skipped
 - Zero regressions from 02-02 baseline
 
 ## Scope Decisions
